@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.ComboBox?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.TableColumn?>
+<?import javafx.scene.control.TableView?>
+<?import javafx.scene.control.TextField?>
+<?import javafx.scene.layout.GridPane?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.VBox?>
+
+<VBox spacing="12.0" styleClass="tab-content furniture-item-page"
+      xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1"
+      fx:controller="com.woodlogix.desktop.ui.furniture.FurnitureItemController">
+    <VBox spacing="4.0">
+        <Label text="%furniture-items.section" styleClass="section-title"/>
+        <Label text="%furniture-items.subtitle" styleClass="subtitle"/>
+    </VBox>
+    <VBox spacing="10.0" styleClass="form-card">
+        <Label text="%furniture-items.form-title" styleClass="card-title"/>
+        <GridPane hgap="12.0" vgap="9.0">
+            <VBox spacing="5.0" GridPane.columnIndex="0" GridPane.rowIndex="0">
+                <Label text="%furniture-items.customer" styleClass="field-label"/>
+                <ComboBox fx:id="customerComboBox" promptText="%environment.select-customer"
+                          maxWidth="Infinity"/>
+            </VBox>
+            <VBox spacing="5.0" GridPane.columnIndex="1" GridPane.rowIndex="0">
+                <Label text="%furniture-items.environment" styleClass="field-label"/>
+                <ComboBox fx:id="environmentComboBox"
+                          promptText="%furniture-items.environment-optional"
+                          maxWidth="Infinity"/>
+            </VBox>
+            <VBox spacing="5.0" GridPane.columnIndex="0" GridPane.rowIndex="1">
+                <Label text="%furniture-items.name" styleClass="field-label"/>
+                <TextField fx:id="nameField" promptText="%furniture-items.name-prompt"/>
+            </VBox>
+            <VBox spacing="5.0" GridPane.columnIndex="1" GridPane.rowIndex="1">
+                <Label text="%furniture-items.type" styleClass="field-label"/>
+                <TextField fx:id="typeField" promptText="%furniture-items.type-prompt"/>
+            </VBox>
+            <VBox spacing="5.0" GridPane.columnIndex="0" GridPane.rowIndex="2">
+                <Label text="%furniture-items.wood" styleClass="field-label"/>
+                <TextField fx:id="woodField" promptText="%furniture-items.wood-prompt"/>
+            </VBox>
+            <HBox spacing="9.0" GridPane.columnIndex="1" GridPane.rowIndex="2">
+                <VBox spacing="5.0" HBox.hgrow="ALWAYS">
+                    <Label text="%furniture-items.length" styleClass="field-label"/>
+                    <TextField fx:id="lengthField" promptText="%parts.dimension-prompt"/>
+                </VBox>
+                <VBox spacing="5.0" HBox.hgrow="ALWAYS">
+                    <Label text="%furniture-items.height" styleClass="field-label"/>
+                    <TextField fx:id="heightField" promptText="%parts.dimension-prompt"/>
+                </VBox>
+                <VBox spacing="5.0" HBox.hgrow="ALWAYS">
+                    <Label text="%furniture-items.depth" styleClass="field-label"/>
+                    <TextField fx:id="depthField" promptText="%parts.dimension-prompt"/>
+                </VBox>
+            </HBox>
+            <columnConstraints>
+                <javafx.scene.layout.ColumnConstraints hgrow="ALWAYS" percentWidth="50.0"/>
+                <javafx.scene.layout.ColumnConstraints hgrow="ALWAYS" percentWidth="50.0"/>
+            </columnConstraints>
+        </GridPane>
+        <HBox spacing="8.0" alignment="CENTER_RIGHT">
+            <Button fx:id="cancelButton" text="%action.cancel" onAction="#cancelEdit"
+                    styleClass="secondary-button" visible="false" managed="false"/>
+            <Button fx:id="saveButton" text="%furniture-items.register-button"
+                    onAction="#saveItem" styleClass="primary-button"/>
+        </HBox>
+    </VBox>
+    <Label fx:id="validationLabel" styleClass="validation-error" wrapText="true"
+           visible="false" managed="false"/>
+    <VBox spacing="8.0" styleClass="table-card" VBox.vgrow="ALWAYS">
+        <HBox spacing="10.0" alignment="CENTER_LEFT">
+            <Label text="%furniture-items.list-title" styleClass="card-title"/>
+            <HBox HBox.hgrow="ALWAYS"/>
+            <TextField fx:id="searchField" promptText="%furniture-items.search-prompt"
+                       accessibleText="%furniture-items.search-label" maxWidth="320.0"/>
+        </HBox>
+        <TableView fx:id="itemTable" VBox.vgrow="ALWAYS">
+            <columns>
+                <TableColumn fx:id="nameColumn" text="%furniture-items.name" prefWidth="150.0"/>
+                <TableColumn fx:id="typeColumn" text="%furniture-items.type" prefWidth="135.0"/>
+                <TableColumn fx:id="woodColumn" text="%furniture-items.wood" prefWidth="130.0"/>
+                <TableColumn fx:id="lengthColumn" text="%furniture-items.length-column"
+                             prefWidth="100.0"/>
+                <TableColumn fx:id="heightColumn" text="%furniture-items.height-column"
+                             prefWidth="100.0"/>
+                <TableColumn fx:id="depthColumn" text="%furniture-items.depth-column"
+                             prefWidth="100.0"/>
+                <TableColumn fx:id="environmentColumn" text="%furniture-items.environment"
+                             prefWidth="145.0"/>
+                <TableColumn fx:id="actionsColumn" text="%column.actions"
+                             prefWidth="150.0" sortable="false"/>
+            </columns>
+        </TableView>
+    </VBox>
+    <Label fx:id="statusLabel" text="%status.loading" styleClass="status-label"/>
+</VBox>

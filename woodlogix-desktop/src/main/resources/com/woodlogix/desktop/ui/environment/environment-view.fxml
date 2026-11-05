@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.CheckBox?>
+<?import javafx.scene.control.ComboBox?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.ListCell?>
+<?import javafx.scene.control.TableColumn?>
+<?import javafx.scene.control.TableView?>
+<?import javafx.scene.control.TextField?>
+<?import javafx.scene.layout.FlowPane?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.VBox?>
+
+<VBox spacing="14.0" styleClass="tab-content" xmlns="http://javafx.com/javafx/17"
+      xmlns:fx="http://javafx.com/fxml/1"
+      fx:controller="com.woodlogix.desktop.ui.environment.EnvironmentController">
+    <VBox spacing="4.0">
+        <Label text="%environment.section" styleClass="section-title"/>
+        <Label text="%environment.subtitle" styleClass="subtitle"/>
+    </VBox>
+    <VBox spacing="12.0" styleClass="form-card">
+        <Label text="%environment.form-title" styleClass="card-title"/>
+        <HBox spacing="12.0" alignment="TOP_LEFT">
+            <VBox spacing="7.0" prefWidth="280.0">
+                <Label text="%environment.customer-label" styleClass="field-label"/>
+                <ComboBox fx:id="customerComboBox" editable="true"
+                          promptText="%environment.customer-search" maxWidth="Infinity">
+                    <buttonCell>
+                        <ListCell/>
+                    </buttonCell>
+                </ComboBox>
+            </VBox>
+            <VBox spacing="8.0" HBox.hgrow="ALWAYS">
+                <Label text="%environment.type" styleClass="field-label"/>
+                <FlowPane fx:id="roomOptions" hgap="12.0" vgap="8.0"/>
+                <TextField fx:id="customRoomField" promptText="%environment.custom-room"/>
+            </VBox>
+        </HBox>
+        <HBox spacing="8.0" alignment="CENTER_RIGHT">
+            <Button fx:id="cancelButton" text="%action.cancel" onAction="#cancelEdit"
+                    styleClass="secondary-button" visible="false" managed="false"/>
+            <Button fx:id="saveButton" text="%environment.register-button"
+                    onAction="#saveEnvironment" styleClass="primary-button"/>
+        </HBox>
+    </VBox>
+    <Label fx:id="validationLabel" styleClass="validation-error"
+           wrapText="true" visible="false" managed="false"/>
+    <VBox spacing="10.0" styleClass="table-card" VBox.vgrow="ALWAYS">
+        <Label text="%environment.list-title" styleClass="card-title"/>
+        <TableView fx:id="environmentTable" VBox.vgrow="ALWAYS">
+            <columns>
+                <TableColumn fx:id="customerColumn" text="%environment.customer-column"
+                             prefWidth="230.0"/>
+                <TableColumn fx:id="typesColumn" text="%environment.column" prefWidth="430.0"/>
+                <TableColumn fx:id="actionsColumn" text="%column.actions"
+                             prefWidth="250.0" sortable="false"/>
+            </columns>
+        </TableView>
+    </VBox>
+    <Label fx:id="statusLabel" text="%status.loading" styleClass="status-label"/>
+</VBox>

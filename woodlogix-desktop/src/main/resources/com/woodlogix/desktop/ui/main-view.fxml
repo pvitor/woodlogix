@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.layout.BorderPane?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.StackPane?>
+<?import javafx.scene.layout.VBox?>
+<?import javafx.scene.text.Font?>
+
+<BorderPane styleClass="app-root" xmlns="http://javafx.com/javafx/17"
+            xmlns:fx="http://javafx.com/fxml/1"
+            fx:controller="com.woodlogix.desktop.ui.MainViewController">
+    <left>
+        <VBox spacing="22.0" prefWidth="238.0" minWidth="238.0" styleClass="sidebar">
+            <padding>
+                <Insets bottom="20.0" left="16.0" right="16.0" top="22.0"/>
+            </padding>
+            <VBox spacing="3.0" styleClass="brand-block">
+                <Label text="%app.brand" textFill="WHITE">
+                    <font><Font name="System Bold" size="21.0"/></font>
+                </Label>
+                <Label text="%app.subtitle" styleClass="sidebar-subtitle" wrapText="true"/>
+            </VBox>
+            <VBox spacing="7.0" styleClass="navigation-list" VBox.vgrow="ALWAYS">
+                <Label text="%nav.workspace" styleClass="navigation-heading"/>
+                <Button fx:id="dashboardButton" text="%nav.dashboard"
+                        onAction="#showDashboard" styleClass="navigation-button">
+                    <graphic><Label text="⌂" styleClass="navigation-icon"/></graphic>
+                </Button>
+                <Button fx:id="customersButton" text="%tab.customers"
+                        onAction="#showCustomers" styleClass="navigation-button">
+                    <graphic><Label text="●" styleClass="navigation-icon"/></graphic>
+                </Button>
+                <Button fx:id="environmentsButton" text="%tab.environments"
+                        onAction="#showEnvironments" styleClass="navigation-button">
+                    <graphic><Label text="▦" styleClass="navigation-icon"/></graphic>
+                </Button>
+                <Button fx:id="furnitureButton" text="%tab.parts"
+                        onAction="#showFurniture" styleClass="navigation-button">
+                    <graphic><Label text="▤" styleClass="navigation-icon"/></graphic>
+                </Button>
+                <Button fx:id="pipelineButton" text="%tab.pipeline"
+                        onAction="#showPipeline" styleClass="navigation-button">
+                    <graphic><Label text="↗" styleClass="navigation-icon"/></graphic>
+                </Button>
+            </VBox>
+            <VBox spacing="3.0" styleClass="sidebar-footer">
+                <Label text="%app.brand" styleClass="sidebar-footer-brand"/>
+                <Label text="%nav.local-data" styleClass="sidebar-footer-detail"/>
+            </VBox>
+        </VBox>
+    </left>
+    <center>
+        <BorderPane styleClass="content-shell">
+            <top>
+                <HBox alignment="CENTER_LEFT" spacing="12.0" styleClass="content-header">
+                    <padding>
+                        <Insets bottom="13.0" left="26.0" right="26.0" top="13.0"/>
+                    </padding>
+                    <Label fx:id="sectionLabel" styleClass="content-header-title"/>
+                    <HBox HBox.hgrow="ALWAYS"/>
+                    <Label text="%nav.local-data" styleClass="local-status"/>
+                </HBox>
+            </top>
+            <center>
+                <StackPane fx:id="contentHost" styleClass="content-host"/>
+            </center>
+        </BorderPane>
+    </center>
+</BorderPane>

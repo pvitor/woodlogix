@@ -1,0 +1,17 @@
+# Maven build output
+**/target/
+
+# Local database and logs
+*.db
+*.sqlite
+*.sqlite3
+*.log
+woodlogix-desktop/logs/
+
+# IDE and machine-specific files
+.idea/
+*.iml
+
+# Operating system files
+.DS_Store
+Thumbs.db
