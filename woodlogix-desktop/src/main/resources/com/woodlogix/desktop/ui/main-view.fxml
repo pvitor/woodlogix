@@ -37,9 +37,13 @@
                         onAction="#showEnvironments" styleClass="navigation-button">
                     <graphic><Label text="▦" styleClass="navigation-icon"/></graphic>
                 </Button>
-                <Button fx:id="furnitureButton" text="%tab.parts"
-                        onAction="#showFurniture" styleClass="navigation-button">
-                    <graphic><Label text="▤" styleClass="navigation-icon"/></graphic>
+                <Button fx:id="materialsButton" text="%tab.materials"
+                        onAction="#showMaterials" styleClass="navigation-button">
+                    <graphic><Label text="▧" styleClass="navigation-icon"/></graphic>
+                </Button>
+                <Button fx:id="pricingButton" text="%tab.pricing"
+                        onAction="#showPricing" styleClass="navigation-button">
+                    <graphic><Label text="R$" styleClass="navigation-icon"/></graphic>
                 </Button>
                 <Button fx:id="pipelineButton" text="%tab.pipeline"
                         onAction="#showPipeline" styleClass="navigation-button">

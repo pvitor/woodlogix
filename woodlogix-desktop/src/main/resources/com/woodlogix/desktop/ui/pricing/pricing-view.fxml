@@ -1,0 +1,192 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.CheckBox?>
+<?import javafx.scene.control.ComboBox?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.TableColumn?>
+<?import javafx.scene.control.TableView?>
+<?import javafx.scene.control.TextField?>
+<?import javafx.scene.layout.ColumnConstraints?>
+<?import javafx.scene.layout.GridPane?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.VBox?>
+
+<VBox spacing="14.0" styleClass="tab-content pricing-page"
+      xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1"
+      fx:controller="com.woodlogix.desktop.ui.pricing.PricingController">
+    <HBox spacing="12.0" alignment="CENTER_LEFT">
+        <VBox spacing="4.0" HBox.hgrow="ALWAYS">
+            <Label text="%pricing.section" styleClass="section-title"/>
+            <Label text="%pricing.subtitle" styleClass="subtitle"/>
+        </VBox>
+        <Button text="%pricing.save-draft" onAction="#saveDraftNow"
+                styleClass="secondary-button"/>
+    </HBox>
+    <VBox spacing="10.0" styleClass="form-card">
+        <Label text="%pricing.project" styleClass="field-label"/>
+        <HBox spacing="8.0">
+            <ComboBox fx:id="projectComboBox" promptText="%pricing.project-prompt"
+                      maxWidth="Infinity" HBox.hgrow="ALWAYS"/>
+            <Button text="%pricing.standalone" onAction="#clearProjectLink"
+                    styleClass="secondary-button"/>
+        </HBox>
+    </VBox>
+    <VBox spacing="10.0" styleClass="form-card">
+        <Label text="%pricing.workpiece-form" styleClass="card-title"/>
+        <GridPane hgap="10.0" vgap="8.0">
+            <VBox spacing="6.0" GridPane.columnIndex="0" GridPane.rowIndex="0">
+                <Label text="%pricing.workpiece-name" styleClass="field-label"/>
+                <TextField fx:id="nameField"/>
+            </VBox>
+            <VBox spacing="6.0" GridPane.columnIndex="1" GridPane.rowIndex="0">
+                <Label text="%pricing.length" styleClass="field-label"/>
+                <TextField fx:id="lengthField" promptText="%dimension.prompt"/>
+            </VBox>
+            <VBox spacing="6.0" GridPane.columnIndex="2" GridPane.rowIndex="0">
+                <Label text="%pricing.width" styleClass="field-label"/>
+                <TextField fx:id="widthField" promptText="%dimension.prompt"/>
+            </VBox>
+            <VBox spacing="6.0" GridPane.columnIndex="3" GridPane.rowIndex="0">
+                <Label text="%pricing.quantity" styleClass="field-label"/>
+                <TextField fx:id="quantityField" promptText="1"/>
+            </VBox>
+            <VBox spacing="6.0" GridPane.columnIndex="0" GridPane.rowIndex="1">
+                <Label text="%pricing.material" styleClass="field-label"/>
+                <ComboBox fx:id="materialComboBox" promptText="%pricing.material-prompt"
+                          maxWidth="Infinity"/>
+            </VBox>
+            <VBox spacing="6.0" GridPane.columnIndex="1" GridPane.rowIndex="1">
+                <Label text="%pricing.edgebanding" styleClass="field-label"/>
+                <ComboBox fx:id="edgeBandingComboBox" promptText="%pricing.edgebanding-optional"
+                          maxWidth="Infinity"/>
+            </VBox>
+            <VBox spacing="6.0" GridPane.columnIndex="2" GridPane.rowIndex="1"
+                  GridPane.columnSpan="2">
+                <Label text="%pricing.edges" styleClass="field-label"/>
+                <HBox spacing="12.0">
+                    <CheckBox fx:id="topEdgeCheckBox" text="%edge.top"/>
+                    <CheckBox fx:id="bottomEdgeCheckBox" text="%edge.bottom"/>
+                    <CheckBox fx:id="leftEdgeCheckBox" text="%edge.left"/>
+                    <CheckBox fx:id="rightEdgeCheckBox" text="%edge.right"/>
+                </HBox>
+            </VBox>
+            <columnConstraints>
+                <ColumnConstraints percentWidth="36.0" hgrow="ALWAYS"/>
+                <ColumnConstraints percentWidth="22.0" hgrow="ALWAYS"/>
+                <ColumnConstraints percentWidth="22.0" hgrow="ALWAYS"/>
+                <ColumnConstraints percentWidth="20.0" hgrow="ALWAYS"/>
+            </columnConstraints>
+        </GridPane>
+        <HBox spacing="8.0" alignment="CENTER_RIGHT">
+            <Button fx:id="cancelEditButton" text="%action.cancel" onAction="#cancelEdit"
+                    styleClass="secondary-button" visible="false" managed="false"/>
+            <Button fx:id="addWorkpieceButton" text="%pricing.add-workpiece"
+                    onAction="#saveWorkpiece" styleClass="primary-button"/>
+        </HBox>
+    </VBox>
+    <HBox spacing="12.0" VBox.vgrow="ALWAYS">
+        <VBox spacing="8.0" styleClass="table-card" HBox.hgrow="ALWAYS">
+            <Label text="%pricing.workpiece-list" styleClass="card-title"/>
+            <TableView fx:id="workpieceTable" VBox.vgrow="ALWAYS">
+                <columns>
+                    <TableColumn fx:id="workpieceNameColumn" text="%pricing.workpiece-name"
+                                 prefWidth="150.0"/>
+                    <TableColumn fx:id="dimensionsColumn" text="%pricing.dimensions"
+                                 prefWidth="125.0"/>
+                    <TableColumn fx:id="quantityColumn" text="%pricing.quantity"
+                                 prefWidth="75.0"/>
+                    <TableColumn fx:id="materialColumn" text="%pricing.material"
+                                 prefWidth="140.0"/>
+                    <TableColumn fx:id="actionsColumn" text="%column.actions"
+                                 prefWidth="110.0" sortable="false"/>
+                </columns>
+            </TableView>
+        </VBox>
+        <VBox spacing="10.0" prefWidth="310.0" minWidth="285.0"
+              styleClass="pricing-summary">
+            <Label text="%pricing.summary" styleClass="card-title"/>
+            <GridPane hgap="8.0" vgap="7.0">
+                <Label text="%pricing.waste" styleClass="field-label"
+                       GridPane.columnIndex="0" GridPane.rowIndex="0"/>
+                <TextField fx:id="wasteField" promptText="15"
+                           GridPane.columnIndex="1" GridPane.rowIndex="0"/>
+                <Label text="%pricing.hours" styleClass="field-label"
+                       GridPane.columnIndex="0" GridPane.rowIndex="1"/>
+                <TextField fx:id="hoursField" promptText="0"
+                           GridPane.columnIndex="1" GridPane.rowIndex="1"/>
+                <Label text="%pricing.labor-rate" styleClass="field-label"
+                       GridPane.columnIndex="0" GridPane.rowIndex="2"/>
+                <TextField fx:id="laborRateField" promptText="0"
+                           GridPane.columnIndex="1" GridPane.rowIndex="2"/>
+                <Label text="%pricing.machine-rate" styleClass="field-label"
+                       GridPane.columnIndex="0" GridPane.rowIndex="3"/>
+                <TextField fx:id="machineRateField" promptText="0"
+                           GridPane.columnIndex="1" GridPane.rowIndex="3"/>
+                <Label text="%pricing.margin" styleClass="field-label"
+                       GridPane.columnIndex="0" GridPane.rowIndex="4"/>
+                <TextField fx:id="marginField" promptText="30"
+                           GridPane.columnIndex="1" GridPane.rowIndex="4"/>
+            </GridPane>
+            <Label text="%pricing.hardware-selection" styleClass="field-label"/>
+            <ComboBox fx:id="hardwareComboBox" promptText="%pricing.hardware-prompt"
+                      maxWidth="Infinity"/>
+            <HBox spacing="6.0">
+                <TextField fx:id="hardwareQuantityField" promptText="%pricing.quantity"
+                           HBox.hgrow="ALWAYS"/>
+                <Button text="%pricing.add-hardware" onAction="#addHardware"
+                        styleClass="secondary-button"/>
+            </HBox>
+            <VBox fx:id="hardwareSummary" spacing="4.0"/>
+            <VBox spacing="5.0" styleClass="pricing-totals">
+                <HBox spacing="8.0">
+                    <Label text="%pricing.sheets"/>
+                    <HBox HBox.hgrow="ALWAYS"/>
+                    <Label fx:id="sheetCountLabel" text="0" styleClass="summary-value"/>
+                </HBox>
+                <HBox spacing="8.0">
+                    <Label text="%pricing.edgebanding-meters"/>
+                    <HBox HBox.hgrow="ALWAYS"/>
+                    <Label fx:id="edgeMetersLabel" text="0 m" styleClass="summary-value"/>
+                </HBox>
+                <HBox spacing="8.0">
+                    <Label text="%pricing.material-cost"/>
+                    <HBox HBox.hgrow="ALWAYS"/>
+                    <Label fx:id="materialCostLabel" text="—"/>
+                </HBox>
+                <HBox spacing="8.0">
+                    <Label text="%pricing.edgebanding-cost"/>
+                    <HBox HBox.hgrow="ALWAYS"/>
+                    <Label fx:id="edgeCostLabel" text="—"/>
+                </HBox>
+                <HBox spacing="8.0">
+                    <Label text="%pricing.hardware-cost"/>
+                    <HBox HBox.hgrow="ALWAYS"/>
+                    <Label fx:id="hardwareCostLabel" text="—"/>
+                </HBox>
+                <HBox spacing="8.0">
+                    <Label text="%pricing.labor-cost"/>
+                    <HBox HBox.hgrow="ALWAYS"/>
+                    <Label fx:id="laborCostLabel" text="—"/>
+                </HBox>
+                <HBox spacing="8.0">
+                    <Label text="%pricing.base-cost"/>
+                    <HBox HBox.hgrow="ALWAYS"/>
+                    <Label fx:id="baseCostLabel" text="—"/>
+                </HBox>
+                <HBox spacing="8.0" styleClass="suggested-price-row">
+                    <Label text="%pricing.suggested-price" styleClass="summary-value"/>
+                    <HBox HBox.hgrow="ALWAYS"/>
+                    <Label fx:id="suggestedPriceLabel" text="—" styleClass="summary-price"/>
+                </HBox>
+                <HBox spacing="8.0">
+                    <Label text="%pricing.net-profit"/>
+                    <HBox HBox.hgrow="ALWAYS"/>
+                    <Label fx:id="profitLabel" text="—" styleClass="summary-value"/>
+                </HBox>
+            </VBox>
+            <Label text="%pricing.summary-note" wrapText="true" styleClass="summary-note"/>
+        </VBox>
+    </HBox>
+    <Label fx:id="statusLabel" text="%status.loading" styleClass="status-label"/>
+</VBox>

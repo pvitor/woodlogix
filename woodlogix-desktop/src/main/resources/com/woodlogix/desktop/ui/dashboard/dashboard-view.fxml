@@ -37,10 +37,10 @@
         </VBox>
         <VBox spacing="8.0" styleClass="dashboard-card" GridPane.columnIndex="0"
               GridPane.rowIndex="1">
-            <Label text="%dashboard.furniture-title" styleClass="dashboard-card-title"/>
-            <Label text="%dashboard.furniture-description" styleClass="dashboard-card-copy"
+            <Label text="%dashboard.pricing-title" styleClass="dashboard-card-title"/>
+            <Label text="%dashboard.pricing-description" styleClass="dashboard-card-copy"
                    wrapText="true"/>
-            <Button text="%dashboard.open-furniture" onAction="#openFurniture"
+            <Button text="%dashboard.open-pricing" onAction="#openPricing"
                     styleClass="dashboard-link-button"/>
         </VBox>
         <VBox spacing="8.0" styleClass="dashboard-card" GridPane.columnIndex="1"

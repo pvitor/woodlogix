@@ -8,22 +8,39 @@ import com.woodlogix.desktop.WoodLogixApplication;
 import com.woodlogix.desktop.persistence.entity.CustomerEntity;
 import com.woodlogix.desktop.persistence.entity.FurniturePartEntity;
 import com.woodlogix.desktop.persistence.entity.FurnitureItemEntity;
+import com.woodlogix.desktop.persistence.entity.EdgeBandingEntity;
+import com.woodlogix.desktop.persistence.entity.EstimateDraftEntity;
+import com.woodlogix.desktop.persistence.entity.HardwareEntity;
 import com.woodlogix.desktop.persistence.entity.LocalDateTimeText;
+import com.woodlogix.desktop.persistence.entity.MaterialEntity;
 import com.woodlogix.desktop.persistence.entity.MaterialTypeConverter;
+import com.woodlogix.desktop.persistence.entity.ProjectWorkpieceEntity;
 import com.woodlogix.desktop.persistence.entity.ProjectEnvironmentEntity;
 import com.woodlogix.desktop.persistence.repository.CustomerRepository;
+import com.woodlogix.desktop.persistence.repository.FurnitureItemRepository;
 import com.woodlogix.desktop.persistence.repository.FurniturePartRepository;
 import com.woodlogix.desktop.persistence.repository.ProjectEnvironmentRepository;
+import com.woodlogix.desktop.persistence.repository.EdgeBandingRepository;
+import com.woodlogix.desktop.persistence.repository.EstimateDraftRepository;
+import com.woodlogix.desktop.persistence.repository.HardwareRepository;
+import com.woodlogix.desktop.persistence.repository.MaterialRepository;
+import com.woodlogix.desktop.persistence.repository.ProjectWorkpieceRepository;
 import com.woodlogix.desktop.service.ProposalPdfService;
 import com.woodlogix.desktop.service.CustomerService;
 import com.woodlogix.desktop.service.CustomerData;
 import com.woodlogix.desktop.service.EnvironmentService;
 import com.woodlogix.desktop.service.EnvironmentData;
 import com.woodlogix.desktop.service.EnvironmentRow;
-import com.woodlogix.desktop.service.FurniturePartService;
-import com.woodlogix.desktop.service.FurniturePartData;
-import com.woodlogix.desktop.service.FurnitureItemData;
-import com.woodlogix.desktop.service.FurnitureItemService;
+import com.woodlogix.desktop.service.EdgeBandingData;
+import com.woodlogix.desktop.service.EdgeBandingService;
+import com.woodlogix.desktop.service.EstimateDraftData;
+import com.woodlogix.desktop.service.EstimateDraftService;
+import com.woodlogix.desktop.service.HardwareData;
+import com.woodlogix.desktop.service.HardwareService;
+import com.woodlogix.desktop.service.MaterialData;
+import com.woodlogix.desktop.service.MaterialService;
+import com.woodlogix.desktop.service.ProjectWorkpieceData;
+import com.woodlogix.desktop.service.ProjectWorkpieceService;
 import com.woodlogix.desktop.service.SalesProjectData;
 import com.woodlogix.desktop.service.SalesPipelineService;
 import org.apache.pdfbox.Loader;
@@ -56,6 +73,7 @@ class PersistenceRepositoryTest {
 
     private ConfigurableApplicationContext applicationContext;
     private CustomerRepository customerRepository;
+    private FurnitureItemRepository furnitureItemRepository;
     private ProjectEnvironmentRepository projectEnvironmentRepository;
     private FurniturePartRepository furniturePartRepository;
 
@@ -72,6 +90,7 @@ class PersistenceRepositoryTest {
                                 + temporaryDirectory.resolve("woodlogix-test.db")
                 );
         customerRepository = applicationContext.getBean(CustomerRepository.class);
+        furnitureItemRepository = applicationContext.getBean(FurnitureItemRepository.class);
         projectEnvironmentRepository =
                 applicationContext.getBean(ProjectEnvironmentRepository.class);
         furniturePartRepository = applicationContext.getBean(FurniturePartRepository.class);
@@ -111,6 +130,139 @@ class PersistenceRepositoryTest {
         assertEquals(MaterialType.MDF, persistedPart.getMaterial());
         assertEquals(1, furniturePartRepository
                 .findAllByProjectEnvironmentIdOrderByNameAsc(projectEnvironment.getId()).size());
+    }
+
+    @Test
+    void persistsPhaseTwoSupplyCatalogsAndProjectWorkpiecesWithCrudAndReferences() {
+        CustomerService customerService = applicationContext.getBean(CustomerService.class);
+        SalesPipelineService salesPipelineService =
+                applicationContext.getBean(SalesPipelineService.class);
+        MaterialService materialService = applicationContext.getBean(MaterialService.class);
+        EdgeBandingService edgeBandingService =
+                applicationContext.getBean(EdgeBandingService.class);
+        HardwareService hardwareService = applicationContext.getBean(HardwareService.class);
+        ProjectWorkpieceService workpieceService =
+                applicationContext.getBean(ProjectWorkpieceService.class);
+        MaterialRepository materialRepository =
+                applicationContext.getBean(MaterialRepository.class);
+        EdgeBandingRepository edgeBandingRepository =
+                applicationContext.getBean(EdgeBandingRepository.class);
+        HardwareRepository hardwareRepository =
+                applicationContext.getBean(HardwareRepository.class);
+        ProjectWorkpieceRepository workpieceRepository =
+                applicationContext.getBean(ProjectWorkpieceRepository.class);
+
+        var customer = customerService.create(
+                new CustomerData("Phase two customer", null, null, null));
+        var project = salesPipelineService.create(new SalesProjectData(
+                customer.id(), null, "Kitchen project", new BigDecimal("1000")));
+        var material = materialService.create(new MaterialData(
+                "MDF", "White", new BigDecimal("18"), new BigDecimal("2750"),
+                new BigDecimal("1840"), new BigDecimal("200.00")));
+        var edgeBanding = edgeBandingService.create(new EdgeBandingData(
+                "PVC white", new BigDecimal("22"), new BigDecimal("3.50")));
+        var hardware = hardwareService.create(new HardwareData(
+                "Hinge", "PAIR", new BigDecimal("12.00")));
+        var workpiece = workpieceService.create(new ProjectWorkpieceData(
+                project.id(), "Door panel", new BigDecimal("700"),
+                new BigDecimal("500"), 2, material.getId(), edgeBanding.getId(),
+                true, true, false, false));
+
+        assertEquals(1, materialService.findAll().size());
+        assertEquals(1, edgeBandingService.findAll().size());
+        assertEquals(1, hardwareService.findAll().size());
+        assertEquals(1, workpieceService.findByProject(project.id()).size());
+        assertEquals(project.id(), workpiece.getProject().getId());
+        assertEquals(material.getId(), workpiece.getMaterial().getId());
+        assertEquals(edgeBanding.getId(), workpiece.getEdgeBanding().getId());
+        assertThrows(IllegalStateException.class, () -> materialService.delete(material.getId()));
+        assertThrows(IllegalStateException.class,
+                () -> edgeBandingService.delete(edgeBanding.getId()));
+
+        materialService.update(material.getId(), new MaterialData(
+                "MDF premium", "White", new BigDecimal("18"), new BigDecimal("2750"),
+                new BigDecimal("1840"), new BigDecimal("225.00")));
+        edgeBandingService.update(edgeBanding.getId(), new EdgeBandingData(
+                "PVC premium", new BigDecimal("22"), new BigDecimal("4.00")));
+        hardwareService.update(hardware.getId(), new HardwareData(
+                "Soft-close hinge", "PAIR", new BigDecimal("15.00")));
+        workpieceService.update(workpiece.getId(), new ProjectWorkpieceData(
+                project.id(), "Updated door panel", new BigDecimal("710"),
+                new BigDecimal("510"), 3, material.getId(), edgeBanding.getId(),
+                true, false, false, true));
+
+        assertEquals("MDF premium", materialService.findAll().get(0).getName());
+        assertEquals("PVC premium", edgeBandingService.findAll().get(0).getName());
+        assertEquals("Soft-close hinge", hardwareService.findAll().get(0).getName());
+        assertEquals("Updated door panel",
+                workpieceService.findByProject(project.id()).get(0).getName());
+
+        workpieceService.delete(workpiece.getId());
+        materialService.delete(material.getId());
+        edgeBandingService.delete(edgeBanding.getId());
+        hardwareService.delete(hardware.getId());
+        assertTrue(workpieceRepository.findAll().isEmpty());
+        assertTrue(materialRepository.findAll().isEmpty());
+        assertTrue(edgeBandingRepository.findAll().isEmpty());
+        assertTrue(hardwareRepository.findAll().isEmpty());
+    }
+
+    @Test
+    void persistsActiveEstimateDraftWithOptionalProjectAndOperatingParameters() {
+        CustomerService customerService = applicationContext.getBean(CustomerService.class);
+        SalesPipelineService salesPipelineService =
+                applicationContext.getBean(SalesPipelineService.class);
+        MaterialService materialService = applicationContext.getBean(MaterialService.class);
+        EdgeBandingService edgeBandingService =
+                applicationContext.getBean(EdgeBandingService.class);
+        HardwareService hardwareService = applicationContext.getBean(HardwareService.class);
+        EstimateDraftService draftService = applicationContext.getBean(EstimateDraftService.class);
+        EstimateDraftRepository draftRepository =
+                applicationContext.getBean(EstimateDraftRepository.class);
+        var material = materialService.create(new MaterialData(
+                "Draft MDF", "Natural", new BigDecimal("18"), new BigDecimal("2750"),
+                new BigDecimal("1840"), new BigDecimal("215.00")));
+        var edgeBanding = edgeBandingService.create(new EdgeBandingData(
+                "Draft PVC", new BigDecimal("22"), new BigDecimal("3.20")));
+        var hardware = hardwareService.create(new HardwareData(
+                "Draft hinge", "PAIR", new BigDecimal("14.50")));
+        var workpiece = new EstimateDraftData.EstimateDraftWorkpieceData(
+                null, "Counter panel", new BigDecimal("1200"), new BigDecimal("600"),
+                2, material.getId(), edgeBanding.getId(), true, false, true, false);
+        var hardwareUsage = new EstimateDraftData.EstimateDraftHardwareData(
+                hardware.getId(), 4);
+        EstimateDraftData freeDraft = new EstimateDraftData(
+                null, new BigDecimal("12.5"), new BigDecimal("3.5"),
+                new BigDecimal("42"), new BigDecimal("18"), new BigDecimal("35"),
+                List.of(workpiece), List.of(hardwareUsage));
+
+        draftService.saveActiveDraft(freeDraft);
+
+        EstimateDraftEntity persisted = draftRepository.findById(
+                EstimateDraftEntity.ACTIVE_DRAFT_ID).orElseThrow();
+        EstimateDraftData restored = draftService.findActiveDraft().orElseThrow();
+        assertNull(persisted.getProject());
+        assertEquals(new BigDecimal("12.5"), persisted.getWasteFactor());
+        assertEquals(new BigDecimal("3.5"), persisted.getEstimatedHours());
+        assertEquals(new BigDecimal("42"), persisted.getHourlyRate());
+        assertEquals(new BigDecimal("18"), persisted.getMachineRate());
+        assertEquals(new BigDecimal("35"), persisted.getProfitMargin());
+        assertEquals(freeDraft, restored);
+        assertThrows(IllegalStateException.class, () -> materialService.delete(material.getId()));
+        assertThrows(IllegalStateException.class,
+                () -> edgeBandingService.delete(edgeBanding.getId()));
+        assertThrows(IllegalStateException.class, () -> hardwareService.delete(hardware.getId()));
+
+        var customer = customerService.create(
+                new CustomerData("Draft project customer", null, null, null));
+        var project = salesPipelineService.create(new SalesProjectData(
+                customer.id(), null, "Draft project", new BigDecimal("1200")));
+        draftService.saveActiveDraft(new EstimateDraftData(
+                project.id(), freeDraft.wasteFactor(), freeDraft.estimatedHours(),
+                freeDraft.hourlyRate(), freeDraft.machineRate(), freeDraft.profitMargin(),
+                freeDraft.workpieces(), freeDraft.hardwares()));
+
+        assertEquals(project.id(), draftService.findActiveDraft().orElseThrow().projectId());
     }
 
     @Test
@@ -307,10 +459,9 @@ class PersistenceRepositoryTest {
     }
 
     @Test
-    void servicesRejectInvalidCustomerAndPartDataBeforePersistence() {
+    void servicesRejectInvalidCustomerAndEnvironmentDataBeforePersistence() {
         CustomerService customerService = applicationContext.getBean(CustomerService.class);
         EnvironmentService environmentService = applicationContext.getBean(EnvironmentService.class);
-        FurniturePartService partService = applicationContext.getBean(FurniturePartService.class);
 
         assertThrows(ConstraintViolationException.class, () -> customerService.create(
                 new CustomerData(" ", "invalid phone", "invalid-email", null)));
@@ -318,109 +469,28 @@ class PersistenceRepositoryTest {
 
         assertThrows(ConstraintViolationException.class, () -> environmentService.create(
                 new EnvironmentData("missing", null)));
-        assertThrows(ConstraintViolationException.class, () -> partService.update(
-                "missing", new FurniturePartData("missing", "Shelf", BigDecimal.ZERO,
-                        new BigDecimal("300"), new BigDecimal("18"),
-                        MaterialType.MDF, Set.of())));
     }
 
     @Test
-    void createsFurniturePartAndAssociatesItWithItsEnvironment() {
-        CustomerService customerService = applicationContext.getBean(CustomerService.class);
-        EnvironmentService environmentService = applicationContext.getBean(EnvironmentService.class);
-        FurniturePartService partService = applicationContext.getBean(FurniturePartService.class);
-        var customer = customerService.create(
-                new CustomerData("Part owner", null, null, null));
-        var environment = environmentService.create(
-                new EnvironmentData(customer.id(), RoomType.KITCHEN.name()));
+    void legacyFurnitureRecordsRemainPersistedWithoutRegistrationModule() {
+        CustomerEntity customer = customerRepository.saveAndFlush(
+                new CustomerEntity("Legacy furniture owner", null, null, null));
+        ProjectEnvironmentEntity environment = projectEnvironmentRepository.saveAndFlush(
+                new ProjectEnvironmentEntity(customer, RoomType.KITCHEN.name()));
+        FurnitureItemEntity item = furnitureItemRepository.saveAndFlush(
+                new FurnitureItemEntity(customer, environment, "Base cabinet",
+                        "Kitchen cabinet", "Oak", new BigDecimal("1800"),
+                        new BigDecimal("900"), new BigDecimal("600")));
 
-        FurniturePartEntity part = partService.create(new FurniturePartData(
-                environment.id(), "Countertop", new BigDecimal("2400"),
-                new BigDecimal("600"), new BigDecimal("38"),
-                MaterialType.PLYWOOD, Set.of(VisibleEdge.TOP)
-        ));
-
-        assertEquals(environment.id(), part.getProjectEnvironment().getId());
-        assertEquals(List.of(part.getId()), partService.findAllByEnvironment(environment.id())
-                .stream().map(FurniturePartEntity::getId).toList());
-        assertEquals(List.of(part.getId()), partService
-                .searchByEnvironment(environment.id(), "COUNTER")
-                .stream().map(FurniturePartEntity::getId).toList());
-        assertTrue(partService.searchByEnvironment(environment.id(), "not-found").isEmpty());
-        assertEquals(MaterialType.PLYWOOD, part.getMaterial());
-    }
-
-    @Test
-    void furniturePartCreationRejectsUnknownEnvironment() {
-        FurniturePartService partService = applicationContext.getBean(FurniturePartService.class);
-
-        assertThrows(EntityNotFoundException.class, () -> partService.create(
-                new FurniturePartData("missing", "Shelf", new BigDecimal("800"),
-                        new BigDecimal("300"), new BigDecimal("18"),
-                        MaterialType.MDF, Set.of())
-        ));
-        assertTrue(furniturePartRepository.findAll().isEmpty());
-    }
-
-    @Test
-    void furnitureItemsPersistDimensionsAndCustomerEnvironmentAssociations() {
-        CustomerService customerService = applicationContext.getBean(CustomerService.class);
-        EnvironmentService environmentService = applicationContext.getBean(EnvironmentService.class);
-        FurnitureItemService itemService = applicationContext.getBean(FurnitureItemService.class);
-        var customer = customerService.create(
-                new CustomerData("Furniture item owner", null, null, null));
-        var environment = environmentService.create(
-                new EnvironmentData(customer.id(), RoomType.KITCHEN.name()));
-
-        FurnitureItemEntity item = itemService.create(new FurnitureItemData(
-                customer.id(), environment.id(), "Base cabinet", "Kitchen cabinet", "Oak",
-                new BigDecimal("1800"), new BigDecimal("900"), new BigDecimal("600")
-        ));
-
-        assertEquals(customer.id(), item.getCustomer().getId());
-        assertEquals(environment.id(), item.getEnvironment().getId());
-        assertEquals(new BigDecimal("1800"), item.getLengthMm());
-        assertEquals(new BigDecimal("900"), item.getHeightMm());
-        assertEquals(new BigDecimal("600"), item.getDepthMm());
-        assertEquals(List.of(item.getId()), itemService.findByCustomer(customer.id())
-                .stream().map(FurnitureItemEntity::getId).toList());
-        assertEquals(List.of(item.getId()), itemService.searchByCustomer(
-                        customer.id(), "CABINET").stream()
-                .map(FurnitureItemEntity::getId).toList());
-        assertTrue(itemService.searchByCustomer(customer.id(), "not-found").isEmpty());
-        assertEquals(List.of(item.getId()), itemService.findByEnvironment(environment.id())
-                .stream().map(FurnitureItemEntity::getId).toList());
-
-        FurnitureItemEntity updated = itemService.update(item.getId(), new FurnitureItemData(
-                customer.id(), null, "Updated cabinet", "Wall cabinet", "Pine",
-                new BigDecimal("1200"), new BigDecimal("700"), new BigDecimal("350")
-        ));
-        assertEquals("Updated cabinet", updated.getName());
-        assertEquals("Pine", updated.getWoodType());
-        assertNull(updated.getEnvironment());
-
-        itemService.delete(item.getId());
-        assertTrue(itemService.findByCustomer(customer.id()).isEmpty());
-    }
-
-    @Test
-    void furnitureItemRejectsEnvironmentOwnedByAnotherCustomer() {
-        CustomerService customerService = applicationContext.getBean(CustomerService.class);
-        EnvironmentService environmentService = applicationContext.getBean(EnvironmentService.class);
-        FurnitureItemService itemService = applicationContext.getBean(FurnitureItemService.class);
-        var firstCustomer = customerService.create(
-                new CustomerData("First customer", null, null, null));
-        var secondCustomer = customerService.create(
-                new CustomerData("Second customer", null, null, null));
-        var environment = environmentService.create(
-                new EnvironmentData(secondCustomer.id(), RoomType.KITCHEN.name()));
-
-        assertThrows(IllegalArgumentException.class, () -> itemService.create(
-                new FurnitureItemData(firstCustomer.id(), environment.id(), "Cabinet",
-                        "Kitchen cabinet", "Oak", new BigDecimal("1000"),
-                        new BigDecimal("800"), new BigDecimal("500"))
-        ));
-        assertTrue(itemService.findByCustomer(firstCustomer.id()).isEmpty());
+        FurnitureItemEntity persisted = furnitureItemRepository.findById(item.getId())
+                .orElseThrow();
+        assertEquals(customer.getId(), persisted.getCustomer().getId());
+        assertEquals(environment.getId(), persisted.getEnvironment().getId());
+        assertEquals(new BigDecimal("1800"), persisted.getLengthMm());
+        assertEquals(new BigDecimal("900"), persisted.getHeightMm());
+        assertEquals(new BigDecimal("600"), persisted.getDepthMm());
+        assertEquals(1, furnitureItemRepository.findAllByCustomerIdOrderByNameAsc(
+                customer.getId()).size());
     }
 
     @Test
@@ -497,10 +567,9 @@ class PersistenceRepositoryTest {
     }
 
     @Test
-    void updatesAndDeletesCustomerEnvironmentAndFurniturePart() {
+    void updatesAndDeletesCustomerAndEnvironment() {
         CustomerService customerService = applicationContext.getBean(CustomerService.class);
         EnvironmentService environmentService = applicationContext.getBean(EnvironmentService.class);
-        FurniturePartService partService = applicationContext.getBean(FurniturePartService.class);
 
         var customer = customerService.create(new CustomerData("Before update", null, null, null));
         var updatedCustomer = customerService.update(
@@ -518,29 +587,8 @@ class PersistenceRepositoryTest {
         );
         assertEquals("SINGLE_BEDROOM", updatedEnvironment.type());
 
-        FurniturePartEntity part = furniturePartRepository.saveAndFlush(new FurniturePartEntity(
-                projectEnvironmentRepository.findById(environment.id()).orElseThrow(),
-                "Shelf",
-                new BigDecimal("800"),
-                new BigDecimal("300"),
-                new BigDecimal("18"),
-                MaterialType.MDF,
-                Set.of(VisibleEdge.TOP)
-        ));
-        FurniturePartEntity updatedPart = partService.update(
-                part.getId(),
-                new FurniturePartData(environment.id(), "Updated shelf",
-                        new BigDecimal("900"), new BigDecimal("350"), new BigDecimal("18"),
-                        MaterialType.PLYWOOD, Set.of(VisibleEdge.TOP, VisibleEdge.BOTTOM))
-        );
-        assertEquals("Updated shelf", updatedPart.getName());
-        assertEquals(MaterialType.PLYWOOD, updatedPart.getMaterial());
-        assertEquals(new BigDecimal("0.700"), updatedPart.calculateEdgeBandingMeters());
-
-        partService.delete(part.getId());
         environmentService.delete(environment.id());
         customerService.delete(customer.id());
-        assertTrue(furniturePartRepository.findById(part.getId()).isEmpty());
         assertTrue(projectEnvironmentRepository.findById(environment.id()).isEmpty());
         assertTrue(customerRepository.findById(customer.id()).isEmpty());
     }
@@ -549,8 +597,6 @@ class PersistenceRepositoryTest {
     void updateAndDeleteFailWithEntityNotFoundForUnknownIds() {
         CustomerService customerService = applicationContext.getBean(CustomerService.class);
         EnvironmentService environmentService = applicationContext.getBean(EnvironmentService.class);
-        FurniturePartService partService = applicationContext.getBean(FurniturePartService.class);
-
         assertThrows(EntityNotFoundException.class, () ->
                 customerService.update("missing", new CustomerData("Name", null, null, null)));
         assertThrows(EntityNotFoundException.class, () -> customerService.delete("missing"));
@@ -558,10 +604,5 @@ class PersistenceRepositoryTest {
                 environmentService.update("missing",
                         new EnvironmentData("missing", RoomType.KITCHEN.name())));
         assertThrows(EntityNotFoundException.class, () -> environmentService.delete("missing"));
-        assertThrows(EntityNotFoundException.class, () -> partService.update(
-                "missing", new FurniturePartData("missing", "Shelf", new BigDecimal("800"),
-                        new BigDecimal("300"), new BigDecimal("18"),
-                        MaterialType.MDF, Set.of())));
-        assertThrows(EntityNotFoundException.class, () -> partService.delete("missing"));
     }
 }

@@ -1,6 +1,7 @@
 package com.woodlogix.desktop.ui;
 
 import com.woodlogix.desktop.ui.dashboard.DashboardController;
+import com.woodlogix.desktop.ui.pricing.PricingController;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.fxml.Initializable;
@@ -27,6 +28,7 @@ public class MainViewController implements Initializable {
 
     private final ConfigurableApplicationContext applicationContext;
     private final Map<String, Node> viewCache = new HashMap<>();
+    private final Map<String, Runnable> viewRefreshers = new HashMap<>();
     private ResourceBundle messages;
 
     @FXML private StackPane contentHost;
@@ -34,7 +36,8 @@ public class MainViewController implements Initializable {
     @FXML private Button dashboardButton;
     @FXML private Button customersButton;
     @FXML private Button environmentsButton;
-    @FXML private Button furnitureButton;
+    @FXML private Button materialsButton;
+    @FXML private Button pricingButton;
     @FXML private Button pipelineButton;
 
     public MainViewController(ConfigurableApplicationContext applicationContext) {
@@ -63,8 +66,13 @@ public class MainViewController implements Initializable {
     }
 
     @FXML
-    private void showFurniture() {
-        navigate("furniture/furniture-view.fxml", "tab.parts", furnitureButton);
+    private void showMaterials() {
+        navigate("pricing/material-view.fxml", "tab.materials", materialsButton);
+    }
+
+    @FXML
+    private void showPricing() {
+        navigate("pricing/pricing-view.fxml", "tab.pricing", pricingButton);
     }
 
     @FXML
@@ -76,6 +84,7 @@ public class MainViewController implements Initializable {
         try {
             Node view = viewCache.computeIfAbsent(viewPath, this::loadView);
             contentHost.getChildren().setAll(view);
+            viewRefreshers.getOrDefault(viewPath, () -> { }).run();
             sectionLabel.setText(messages.getString(titleKey));
             updateNavigationSelection(selectedButton);
         } catch (RuntimeException exception) {
@@ -99,6 +108,9 @@ public class MainViewController implements Initializable {
             if (loader.getController() instanceof DashboardController dashboardController) {
                 dashboardController.setNavigationHandler(this::navigateFromDashboard);
             }
+            if (loader.getController() instanceof PricingController pricingController) {
+                viewRefreshers.put(viewPath, pricingController::refreshCatalogs);
+            }
             return view;
         } catch (IOException exception) {
             throw new IllegalStateException("Could not load view " + viewPath, exception);
@@ -109,7 +121,8 @@ public class MainViewController implements Initializable {
         switch (destination) {
             case "customers" -> showCustomers();
             case "environments" -> showEnvironments();
-            case "furniture" -> showFurniture();
+            case "pricing" -> showPricing();
+            case "materials" -> showMaterials();
             case "pipeline" -> showPipeline();
             default -> LOGGER.warn("Ignoring unknown dashboard destination");
         }
@@ -117,7 +130,7 @@ public class MainViewController implements Initializable {
 
     private void updateNavigationSelection(Button selectedButton) {
         List.of(dashboardButton, customersButton, environmentsButton,
-                        furnitureButton, pipelineButton)
+                        materialsButton, pricingButton, pipelineButton)
                 .forEach(button -> button.getStyleClass().remove("navigation-button-selected"));
         selectedButton.getStyleClass().add("navigation-button-selected");
     }

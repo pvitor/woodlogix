@@ -142,8 +142,61 @@
     -fx-padding: 18px;
 }
 
-.furniture-item-page {
-    -fx-padding: 12px 18px 16px 18px;
+
+.pricing-page {
+    -fx-padding: 14px 18px 16px 18px;
+}
+
+.catalog-tab {
+    -fx-padding: 12px;
+    -fx-background-color: #f3f5f7;
+}
+
+.catalog-field {
+    -fx-min-width: 120px;
+}
+
+.pricing-summary {
+    -fx-background-color: white;
+    -fx-background-radius: 9px;
+    -fx-border-color: #e2e7ec;
+    -fx-border-radius: 9px;
+    -fx-border-width: 1px;
+    -fx-padding: 14px;
+}
+
+.pricing-totals {
+    -fx-border-color: #e4e9ee transparent transparent transparent;
+    -fx-border-width: 1px 0 0 0;
+    -fx-padding: 10px 0 0 0;
+}
+
+.summary-value {
+    -fx-font-weight: bold;
+    -fx-text-fill: #203047;
+}
+
+.summary-price {
+    -fx-font-size: 16px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #176b55;
+}
+
+.summary-note {
+    -fx-font-size: 11px;
+    -fx-text-fill: #64748b;
+}
+
+.suggested-price-row {
+    -fx-border-color: #dcebe5 transparent transparent transparent;
+    -fx-border-width: 1px 0 0 0;
+    -fx-padding: 7px 0 0 0;
+}
+
+.icon-button {
+    -fx-background-color: transparent;
+    -fx-text-fill: #b42318;
+    -fx-cursor: hand;
 }
 
 .dashboard-page {
@@ -201,37 +254,6 @@
     -fx-text-fill: #176b55;
 }
 
-.furniture-workspace {
-    -fx-background-color: #f3f5f7;
-}
-
-.furniture-workspace-header {
-    -fx-background-color: #f3f5f7;
-}
-
-.module-switcher {
-    -fx-border-color: transparent transparent #dfe5eb transparent;
-    -fx-border-width: 0 0 1px 0;
-}
-
-.module-switch-button {
-    -fx-background-color: transparent;
-    -fx-text-fill: #697586;
-    -fx-font-weight: bold;
-    -fx-padding: 9px 13px;
-    -fx-cursor: hand;
-}
-
-.module-switch-button-selected {
-    -fx-background-color: transparent;
-    -fx-border-color: transparent transparent #176b55 transparent;
-    -fx-border-width: 0 0 2px 0;
-    -fx-text-fill: #176b55;
-}
-
-.furniture-module-content {
-    -fx-background-color: #f3f5f7;
-}
 
 .form-card,
 .table-card {
@@ -245,6 +267,7 @@
 
 .form-card .text-field,
 .form-card .combo-box,
+.pricing-summary .text-field,
 .table-card .text-field {
     -fx-background-radius: 5px;
     -fx-border-color: #d7dee6;

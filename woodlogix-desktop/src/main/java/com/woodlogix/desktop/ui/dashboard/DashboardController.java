@@ -24,8 +24,8 @@ public class DashboardController {
     }
 
     @FXML
-    private void openFurniture() {
-        navigationHandler.accept("furniture");
+    private void openPricing() {
+        navigationHandler.accept("pricing");
     }
 
     @FXML
