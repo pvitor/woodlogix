@@ -3,66 +3,122 @@
 <?import javafx.geometry.Insets?>
 <?import javafx.scene.control.Button?>
 <?import javafx.scene.control.Label?>
+<?import javafx.scene.control.ScrollPane?>
+<?import javafx.scene.layout.ColumnConstraints?>
 <?import javafx.scene.layout.GridPane?>
 <?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.StackPane?>
 <?import javafx.scene.layout.VBox?>
+<?import javafx.scene.shape.SVGPath?>
 
-<VBox spacing="22.0" styleClass="dashboard-page" xmlns="http://javafx.com/javafx/17"
-      xmlns:fx="http://javafx.com/fxml/1"
-      fx:controller="com.woodlogix.desktop.ui.dashboard.DashboardController">
-    <padding>
-        <Insets bottom="26.0" left="28.0" right="28.0" top="26.0"/>
-    </padding>
-    <VBox spacing="7.0">
-        <Label text="%dashboard.eyebrow" styleClass="dashboard-eyebrow"/>
-        <Label text="%dashboard.title" styleClass="dashboard-title"/>
-        <Label text="%dashboard.subtitle" styleClass="subtitle"/>
-    </VBox>
-    <GridPane hgap="14.0" vgap="14.0">
-        <VBox spacing="8.0" styleClass="dashboard-card" GridPane.columnIndex="0"
-              GridPane.rowIndex="0">
-            <Label text="%dashboard.customers-title" styleClass="dashboard-card-title"/>
-            <Label text="%dashboard.customers-description" styleClass="dashboard-card-copy"
-                   wrapText="true"/>
-            <Button text="%dashboard.open-customers" onAction="#openCustomers"
-                    styleClass="dashboard-link-button"/>
+<ScrollPane fitToWidth="true" hbarPolicy="NEVER" styleClass="dashboard-scroll"
+            xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1"
+            fx:controller="com.woodlogix.desktop.ui.dashboard.DashboardController">
+    <content>
+        <VBox spacing="22.0" styleClass="dashboard-page">
+            <padding>
+                <Insets bottom="28.0" left="28.0" right="28.0" top="26.0"/>
+            </padding>
+            <VBox spacing="6.0">
+                <Label text="%dashboard.eyebrow" styleClass="dashboard-eyebrow"/>
+                <Label text="%dashboard.title" styleClass="dashboard-title"/>
+                <Label text="%dashboard.subtitle" styleClass="subtitle" wrapText="true"/>
+            </VBox>
+
+            <GridPane hgap="12.0" vgap="12.0" styleClass="dashboard-metrics">
+                <VBox spacing="12.0" styleClass="dashboard-metric-card"
+                      GridPane.columnIndex="0" GridPane.rowIndex="0">
+                    <HBox alignment="CENTER_LEFT" spacing="10.0">
+                        <StackPane styleClass="dashboard-icon-slot">
+                            <SVGPath styleClass="dashboard-icon"
+                                     content="M8 8 A3 3 0 1 0 8 2 A3 3 0 0 0 8 8 M2 14 C2 11 4.5 9.5 8 9.5 C11.5 9.5 14 11 14 14 Z"/>
+                        </StackPane>
+                        <Label text="%dashboard.customers-title" styleClass="dashboard-card-title"
+                               wrapText="true"/>
+                    </HBox>
+                    <Label fx:id="customerCountLabel" text="—"
+                           styleClass="dashboard-metric-value"/>
+                    <Label text="%dashboard.customers-caption" styleClass="dashboard-card-copy"
+                           wrapText="true"/>
+                </VBox>
+                <VBox spacing="12.0" styleClass="dashboard-metric-card"
+                      GridPane.columnIndex="1" GridPane.rowIndex="0">
+                    <HBox alignment="CENTER_LEFT" spacing="10.0">
+                        <StackPane styleClass="dashboard-icon-slot">
+                            <SVGPath styleClass="dashboard-icon"
+                                     content="M2 13 L6 9 L9 11 L14 4 M10 4 H14 V8"/>
+                        </StackPane>
+                        <Label text="%dashboard.opportunities-title"
+                               styleClass="dashboard-card-title" wrapText="true"/>
+                    </HBox>
+                    <Label fx:id="opportunityCountLabel" text="—"
+                           styleClass="dashboard-metric-value"/>
+                    <Label text="%dashboard.opportunities-caption"
+                           styleClass="dashboard-card-copy" wrapText="true"/>
+                </VBox>
+                <VBox spacing="12.0" styleClass="dashboard-metric-card"
+                      GridPane.columnIndex="2" GridPane.rowIndex="0">
+                    <HBox alignment="CENTER_LEFT" spacing="10.0">
+                        <StackPane styleClass="dashboard-icon-slot">
+                            <SVGPath styleClass="dashboard-icon"
+                                     content="M3 1.5 H13 V14.5 H3 Z M5 4 H11 V6 H5 Z M5 8 H6 M8 8 H9 M11 8 H11.1 M5 11 H6 M8 11 H9 M11 11 H11.1"/>
+                        </StackPane>
+                        <Label text="%dashboard.draft-title" styleClass="dashboard-card-title"
+                               wrapText="true"/>
+                    </HBox>
+                    <Label fx:id="draftStatusLabel" text="—"
+                           styleClass="dashboard-metric-value dashboard-draft-value"
+                           wrapText="true"/>
+                    <Label text="%dashboard.draft-caption" styleClass="dashboard-card-copy"
+                           wrapText="true"/>
+                </VBox>
+                <columnConstraints>
+                    <ColumnConstraints percentWidth="33.333" hgrow="ALWAYS"/>
+                    <ColumnConstraints percentWidth="33.333" hgrow="ALWAYS"/>
+                    <ColumnConstraints percentWidth="33.334" hgrow="ALWAYS"/>
+                </columnConstraints>
+            </GridPane>
+
+            <VBox spacing="12.0" styleClass="dashboard-panel">
+                <HBox alignment="CENTER_LEFT" spacing="12.0">
+                    <VBox spacing="4.0" HBox.hgrow="ALWAYS">
+                        <Label text="%dashboard.pipeline-title" styleClass="card-title"/>
+                        <Label text="%dashboard.pipeline-summary-caption"
+                               styleClass="dashboard-card-copy" wrapText="true"/>
+                    </VBox>
+                    <Button text="%dashboard.open-pipeline" onAction="#openPipeline"
+                            styleClass="secondary-button"/>
+                </HBox>
+                <VBox fx:id="pipelineStageList" spacing="2.0"/>
+            </VBox>
+
+            <VBox spacing="12.0" styleClass="dashboard-panel">
+                <VBox spacing="4.0">
+                    <Label text="%dashboard.quick-access-title" styleClass="card-title"/>
+                    <Label text="%dashboard.quick-access-caption"
+                           styleClass="dashboard-card-copy" wrapText="true"/>
+                </VBox>
+                <GridPane hgap="10.0" vgap="10.0" styleClass="dashboard-actions">
+                    <Button text="%dashboard.open-customers" onAction="#openCustomers"
+                            styleClass="dashboard-action-button" maxWidth="Infinity"
+                            GridPane.columnIndex="0" GridPane.rowIndex="0"/>
+                    <Button text="%dashboard.open-environments" onAction="#openEnvironments"
+                            styleClass="dashboard-action-button" maxWidth="Infinity"
+                            GridPane.columnIndex="1" GridPane.rowIndex="0"/>
+                    <Button text="%dashboard.open-materials" onAction="#openMaterials"
+                            styleClass="dashboard-action-button" maxWidth="Infinity"
+                            GridPane.columnIndex="0" GridPane.rowIndex="1"/>
+                    <Button text="%dashboard.open-pricing" onAction="#openPricing"
+                            styleClass="dashboard-action-button" maxWidth="Infinity"
+                            GridPane.columnIndex="1" GridPane.rowIndex="1"/>
+                    <columnConstraints>
+                        <ColumnConstraints percentWidth="50.0" hgrow="ALWAYS"/>
+                        <ColumnConstraints percentWidth="50.0" hgrow="ALWAYS"/>
+                    </columnConstraints>
+                </GridPane>
+            </VBox>
+            <Label fx:id="dashboardStatusLabel" text="%status.loading"
+                   styleClass="status-label"/>
         </VBox>
-        <VBox spacing="8.0" styleClass="dashboard-card" GridPane.columnIndex="1"
-              GridPane.rowIndex="0">
-            <Label text="%dashboard.environments-title" styleClass="dashboard-card-title"/>
-            <Label text="%dashboard.environments-description" styleClass="dashboard-card-copy"
-                   wrapText="true"/>
-            <Button text="%dashboard.open-environments" onAction="#openEnvironments"
-                    styleClass="dashboard-link-button"/>
-        </VBox>
-        <VBox spacing="8.0" styleClass="dashboard-card" GridPane.columnIndex="0"
-              GridPane.rowIndex="1">
-            <Label text="%dashboard.pricing-title" styleClass="dashboard-card-title"/>
-            <Label text="%dashboard.pricing-description" styleClass="dashboard-card-copy"
-                   wrapText="true"/>
-            <Button text="%dashboard.open-pricing" onAction="#openPricing"
-                    styleClass="dashboard-link-button"/>
-        </VBox>
-        <VBox spacing="8.0" styleClass="dashboard-card" GridPane.columnIndex="1"
-              GridPane.rowIndex="1">
-            <Label text="%dashboard.pipeline-title" styleClass="dashboard-card-title"/>
-            <Label text="%dashboard.pipeline-description" styleClass="dashboard-card-copy"
-                   wrapText="true"/>
-            <Button text="%dashboard.open-pipeline" onAction="#openPipeline"
-                    styleClass="dashboard-link-button"/>
-        </VBox>
-        <columnConstraints>
-            <javafx.scene.layout.ColumnConstraints hgrow="ALWAYS" percentWidth="50.0"/>
-            <javafx.scene.layout.ColumnConstraints hgrow="ALWAYS" percentWidth="50.0"/>
-        </columnConstraints>
-        <rowConstraints>
-            <javafx.scene.layout.RowConstraints vgrow="ALWAYS"/>
-            <javafx.scene.layout.RowConstraints vgrow="ALWAYS"/>
-        </rowConstraints>
-    </GridPane>
-    <HBox styleClass="dashboard-local-note" spacing="10.0">
-        <Label text="●" styleClass="local-note-icon"/>
-        <Label text="%dashboard.local-note" styleClass="dashboard-card-copy"
-               wrapText="true"/>
-    </HBox>
-</VBox>
+    </content>
+</ScrollPane>

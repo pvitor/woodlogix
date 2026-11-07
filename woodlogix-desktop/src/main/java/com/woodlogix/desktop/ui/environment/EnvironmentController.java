@@ -29,6 +29,7 @@ import javafx.scene.control.TextField;
 import javafx.scene.control.Tooltip;
 import javafx.scene.layout.FlowPane;
 import javafx.scene.layout.HBox;
+import javafx.scene.shape.SVGPath;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.event.TransactionalEventListener;
 import javafx.util.Duration;
@@ -127,6 +128,9 @@ public class EnvironmentController implements Initializable {
                 new ReadOnlyStringWrapper(cell.getValue().customerName()));
         actionsColumn.setCellFactory(column ->
                 createActionsCell(this::edit, this::confirmDeleteEnvironments));
+        environmentTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
+        actionsColumn.setMinWidth(88.0);
+        actionsColumn.setPrefWidth(100.0);
         initializeRoomTypes();
         loadCustomers();
         loadEnvironments();
@@ -322,17 +326,18 @@ public class EnvironmentController implements Initializable {
             Consumer<EnvironmentCustomerRow> deleteAction
     ) {
         return new TableCell<>() {
-            private final Button manageButton =
-                    new Button("✏");
-            private final Button deleteButton = new Button("🗑");
+            private final Button manageButton = actionButton(
+                    "tooltip.action-edit",
+                    "M3 11 L10.8 3.2 L13.8 6.2 L6 14 H3 Z M9.8 4.2 L12.8 7.2");
+            private final Button deleteButton = actionButton(
+                    "tooltip.action-delete",
+                    "M2 4 H14 M5 4 V2 H11 V4 M4 5 L5 14 H11 L12 5 M6.5 7 V12 M9.5 7 V12");
             private final HBox buttons = new HBox(6, manageButton, deleteButton);
 
             {
                 setAlignment(Pos.CENTER);
                 manageButton.getStyleClass().add("btn-edit");
                 deleteButton.getStyleClass().add("btn-delete");
-                manageButton.setTooltip(new Tooltip(text("tooltip.action-edit")));
-                deleteButton.setTooltip(new Tooltip(text("tooltip.action-delete")));
                 buttons.setAlignment(Pos.CENTER);
                 manageButton.setOnAction(event -> {
                     EnvironmentCustomerRow row = getTableRow().getItem();
@@ -354,6 +359,17 @@ public class EnvironmentController implements Initializable {
                 setGraphic(empty ? null : buttons);
             }
         };
+    }
+
+    private Button actionButton(String accessibleTextKey, String iconPath) {
+        Button button = new Button();
+        SVGPath icon = new SVGPath();
+        icon.setContent(iconPath);
+        icon.getStyleClass().add("table-action-icon");
+        button.setGraphic(icon);
+        button.setAccessibleText(text(accessibleTextKey));
+        button.setTooltip(new Tooltip(text(accessibleTextKey)));
+        return button;
     }
 
     private List<RoomType> selectedRoomTypes() {

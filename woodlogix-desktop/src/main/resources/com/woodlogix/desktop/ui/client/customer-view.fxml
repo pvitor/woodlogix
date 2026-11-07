@@ -10,25 +10,44 @@
 <?import javafx.scene.layout.VBox?>
 <?import javafx.scene.layout.HBox?>
 
-<VBox spacing="14.0" styleClass="tab-content" xmlns="http://javafx.com/javafx/17"
+<VBox spacing="16.0" styleClass="tab-content customer-page"
+      xmlns="http://javafx.com/javafx/17"
       xmlns:fx="http://javafx.com/fxml/1"
       fx:controller="com.woodlogix.desktop.ui.client.CustomerController">
+    <padding>
+        <Insets bottom="28.0" left="28.0" right="28.0" top="26.0"/>
+    </padding>
     <VBox spacing="4.0">
         <Label text="%customer.section" styleClass="section-title"/>
         <Label text="%customer.subtitle" styleClass="subtitle"/>
     </VBox>
-    <VBox spacing="12.0" styleClass="form-card">
-        <Label text="%customer.form-title" styleClass="card-title"/>
-        <GridPane hgap="12.0" vgap="10.0">
-            <TextField fx:id="nameField" promptText="%customer.name"
-                       GridPane.columnIndex="0" GridPane.rowIndex="0"/>
-            <TextField fx:id="phoneField" promptText="%customer.phone"
-                       GridPane.columnIndex="1" GridPane.rowIndex="0"/>
-            <TextField fx:id="emailField" promptText="%customer.email"
-                       GridPane.columnIndex="0" GridPane.rowIndex="1"/>
-            <TextField fx:id="addressField" promptText="%customer.address"
-                       GridPane.columnIndex="1" GridPane.rowIndex="1"/>
-            <HBox spacing="8.0" alignment="CENTER_RIGHT"
+    <VBox spacing="12.0" styleClass="form-card customer-form-panel">
+        <VBox spacing="4.0">
+            <Label text="%customer.form-title" styleClass="card-title"/>
+            <Label text="%customer.form-hint" styleClass="panel-hint" wrapText="true"/>
+        </VBox>
+        <GridPane hgap="14.0" vgap="11.0">
+            <VBox spacing="5.0" styleClass="input-group"
+                  GridPane.columnIndex="0" GridPane.rowIndex="0">
+                <Label text="%customer.name" styleClass="field-label"/>
+                <TextField fx:id="nameField" promptText="%customer.name"/>
+            </VBox>
+            <VBox spacing="5.0" styleClass="input-group"
+                  GridPane.columnIndex="1" GridPane.rowIndex="0">
+                <Label text="%customer.phone" styleClass="field-label"/>
+                <TextField fx:id="phoneField" promptText="%customer.phone"/>
+            </VBox>
+            <VBox spacing="5.0" styleClass="input-group"
+                  GridPane.columnIndex="0" GridPane.rowIndex="1">
+                <Label text="%customer.email" styleClass="field-label"/>
+                <TextField fx:id="emailField" promptText="%customer.email"/>
+            </VBox>
+            <VBox spacing="5.0" styleClass="input-group"
+                  GridPane.columnIndex="1" GridPane.rowIndex="1">
+                <Label text="%customer.address" styleClass="field-label"/>
+                <TextField fx:id="addressField" promptText="%customer.address"/>
+            </VBox>
+            <HBox spacing="8.0" alignment="CENTER_RIGHT" styleClass="form-actions"
                   GridPane.columnIndex="0" GridPane.rowIndex="2" GridPane.columnSpan="2">
                 <Button fx:id="cancelButton" text="%action.cancel" onAction="#cancelEdit"
                         styleClass="secondary-button" visible="false" managed="false"/>
@@ -36,28 +55,36 @@
                         onAction="#saveCustomer" styleClass="primary-button"/>
             </HBox>
             <columnConstraints>
-                <javafx.scene.layout.ColumnConstraints hgrow="ALWAYS" percentWidth="50.0"/>
-                <javafx.scene.layout.ColumnConstraints hgrow="ALWAYS" percentWidth="50.0"/>
+                <javafx.scene.layout.ColumnConstraints hgrow="ALWAYS" percentWidth="58.0"/>
+                <javafx.scene.layout.ColumnConstraints hgrow="ALWAYS" percentWidth="42.0"/>
             </columnConstraints>
         </GridPane>
     </VBox>
     <Label fx:id="validationLabel" styleClass="validation-error"
            wrapText="true" visible="false" managed="false"/>
-    <VBox spacing="10.0" styleClass="table-card" VBox.vgrow="ALWAYS">
-        <HBox spacing="10.0" alignment="CENTER_LEFT">
-            <Label text="%customer.list-title" styleClass="card-title"/>
-            <HBox HBox.hgrow="ALWAYS"/>
-            <TextField fx:id="searchField" promptText="%customer.search-prompt"
-                       accessibleText="%customer.search-label" maxWidth="340.0"/>
+    <VBox spacing="12.0" styleClass="table-card customer-list-panel" VBox.vgrow="ALWAYS">
+        <HBox spacing="12.0" alignment="CENTER_LEFT" styleClass="list-heading">
+            <VBox spacing="4.0" HBox.hgrow="ALWAYS">
+                <Label text="%customer.list-title" styleClass="card-title"/>
+                <Label text="%customer.list-hint" styleClass="panel-hint" wrapText="true"/>
+            </VBox>
+            <VBox spacing="5.0" styleClass="customer-search-group">
+                <Label text="%customer.search-label" styleClass="field-label"/>
+                <TextField fx:id="searchField" promptText="%customer.search-prompt"
+                           accessibleText="%customer.search-label" prefWidth="300.0"/>
+            </VBox>
         </HBox>
         <TableView fx:id="customerTable" VBox.vgrow="ALWAYS">
+            <placeholder>
+                <Label text="%customer.empty" styleClass="empty-state" wrapText="true"/>
+            </placeholder>
             <columns>
                 <TableColumn fx:id="nameColumn" text="%column.name" prefWidth="210.0"/>
                 <TableColumn fx:id="phoneColumn" text="%column.phone" prefWidth="145.0"/>
                 <TableColumn fx:id="emailColumn" text="%column.email" prefWidth="210.0"/>
                 <TableColumn fx:id="addressColumn" text="%column.address" prefWidth="260.0"/>
                 <TableColumn fx:id="actionsColumn" text="%column.actions"
-                             prefWidth="155.0" sortable="false"/>
+                             prefWidth="100.0" minWidth="88.0" sortable="false"/>
             </columns>
         </TableView>
     </VBox>

@@ -202,12 +202,23 @@ public class KanbanController implements Initializable {
         kanbanColumns.getChildren().clear();
         for (SalesStage stage : SalesStage.values()) {
             VBox column = new VBox(10);
-            column.getStyleClass().add("kanban-column");
-            column.setPrefWidth(242);
-            Label heading = new Label(text(stage.getMessageKey())
-                    + "  ·  " + pipeline.getOrDefault(stage, List.of()).size());
+            column.getStyleClass().addAll("kanban-column",
+                    "stage-" + stage.name().toLowerCase(Locale.ROOT).replace('_', '-'));
+            column.setMinWidth(236);
+            column.setPrefWidth(248);
+
+            List<SalesProjectRow> projects = pipeline.getOrDefault(stage, List.of());
+            HBox headingRow = new HBox(8);
+            headingRow.getStyleClass().add("kanban-heading-row");
+            Label heading = new Label(text(stage.getMessageKey()));
             heading.getStyleClass().add("kanban-heading");
-            column.getChildren().add(heading);
+            heading.setWrapText(true);
+            heading.setMaxWidth(Double.MAX_VALUE);
+            HBox.setHgrow(heading, javafx.scene.layout.Priority.ALWAYS);
+            Label count = new Label(Integer.toString(projects.size()));
+            count.getStyleClass().add("kanban-count");
+            headingRow.getChildren().addAll(heading, count);
+            column.getChildren().add(headingRow);
             column.setOnDragOver(event -> {
                 if (event.getGestureSource() != column
                         && event.getDragboard().hasContent(PROJECT_ID_FORMAT)) {
@@ -232,7 +243,13 @@ public class KanbanController implements Initializable {
                 event.setDropCompleted(completed);
                 event.consume();
             });
-            for (SalesProjectRow project : pipeline.getOrDefault(stage, List.of())) {
+            if (projects.isEmpty()) {
+                Label emptyState = new Label(text("pipeline.empty-stage"));
+                emptyState.getStyleClass().add("kanban-empty-state");
+                emptyState.setWrapText(true);
+                column.getChildren().add(emptyState);
+            }
+            for (SalesProjectRow project : projects) {
                 column.getChildren().add(createProjectCard(project));
             }
             kanbanColumns.getChildren().add(column);
@@ -246,11 +263,16 @@ public class KanbanController implements Initializable {
         name.getStyleClass().add("project-card-title");
         name.setWrapText(true);
         Label customer = new Label(project.customerName());
+        customer.getStyleClass().add("project-card-customer");
+        customer.setWrapText(true);
         Label environment = new Label(project.environmentName().isBlank()
                 ? text("pipeline.undefined-environment")
                 : RoomTypeLabels.localized(project.environmentName(), messages));
+        environment.getStyleClass().add("project-card-environment");
+        environment.setWrapText(true);
         Label value = new Label(java.text.NumberFormat.getCurrencyInstance(locale)
                 .format(project.totalValue()));
+        value.getStyleClass().add("project-card-value");
         Button exportButton = new Button(text("proposal.export-button"));
         exportButton.getStyleClass().add("secondary-button");
         exportButton.setMaxWidth(Double.MAX_VALUE);

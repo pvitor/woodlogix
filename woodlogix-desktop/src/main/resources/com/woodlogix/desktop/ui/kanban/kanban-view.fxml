@@ -7,24 +7,57 @@
 <?import javafx.scene.control.ScrollPane?>
 <?import javafx.scene.control.TextField?>
 <?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.FlowPane?>
 <?import javafx.scene.layout.VBox?>
 
-<VBox spacing="13.0" styleClass="tab-content" xmlns="http://javafx.com/javafx/17"
+<VBox spacing="16.0" styleClass="tab-content kanban-page"
+      xmlns="http://javafx.com/javafx/17"
       xmlns:fx="http://javafx.com/fxml/1"
       fx:controller="com.woodlogix.desktop.ui.kanban.KanbanController">
-    <Label text="%pipeline.section" styleClass="section-title"/>
-    <HBox spacing="9.0" alignment="CENTER_LEFT">
-        <ComboBox fx:id="customerComboBox" promptText="%pipeline.customer" prefWidth="220.0"/>
-        <ComboBox fx:id="environmentComboBox" promptText="%pipeline.environment"
-                  prefWidth="220.0"/>
-        <TextField fx:id="projectNameField" promptText="%pipeline.project" HBox.hgrow="ALWAYS"/>
-        <TextField fx:id="projectValueField" promptText="%pipeline.value" prefWidth="140.0"/>
-        <Button fx:id="saveButton" text="%pipeline.add" onAction="#saveProject"
-                styleClass="primary-button"/>
-    </HBox>
-    <Label fx:id="validationLabel" styleClass="validation-error"
-           wrapText="true" visible="false" managed="false"/>
-    <Label text="%pipeline.drag-hint" styleClass="subtitle"/>
+    <padding>
+        <Insets bottom="28.0" left="28.0" right="28.0" top="26.0"/>
+    </padding>
+    <VBox spacing="4.0">
+        <Label text="%pipeline.section" styleClass="section-title"/>
+        <Label text="%pipeline.subtitle" styleClass="subtitle" wrapText="true"/>
+    </VBox>
+    <VBox spacing="12.0" styleClass="form-card pipeline-create-panel">
+        <VBox spacing="4.0">
+            <Label text="%pipeline.create-title" styleClass="card-title"/>
+            <Label text="%pipeline.create-hint" styleClass="panel-hint" wrapText="true"/>
+        </VBox>
+        <FlowPane hgap="12.0" vgap="10.0" alignment="BOTTOM_LEFT"
+                  styleClass="pipeline-create-fields">
+            <VBox spacing="5.0" styleClass="pipeline-field" prefWidth="190.0">
+                <Label text="%pipeline.customer-label" styleClass="field-label"/>
+                <ComboBox fx:id="customerComboBox" promptText="%pipeline.customer"
+                          maxWidth="Infinity"/>
+            </VBox>
+            <VBox spacing="5.0" styleClass="pipeline-field" prefWidth="190.0">
+                <Label text="%pipeline.environment-label" styleClass="field-label"/>
+                <ComboBox fx:id="environmentComboBox" promptText="%pipeline.environment"
+                          maxWidth="Infinity"/>
+            </VBox>
+            <VBox spacing="5.0" styleClass="pipeline-field pipeline-project-field"
+                  prefWidth="190.0">
+                <Label text="%pipeline.project-label" styleClass="field-label"/>
+                <TextField fx:id="projectNameField" promptText="%pipeline.project"/>
+            </VBox>
+            <VBox spacing="5.0" styleClass="pipeline-field pipeline-value-field"
+                  prefWidth="135.0">
+                <Label text="%pipeline.value-label" styleClass="field-label"/>
+                <TextField fx:id="projectValueField" promptText="%pipeline.value"/>
+            </VBox>
+            <Button fx:id="saveButton" text="%pipeline.add" onAction="#saveProject"
+                    styleClass="primary-button pipeline-add-button"/>
+        </FlowPane>
+        <Label fx:id="validationLabel" styleClass="validation-error"
+               wrapText="true" visible="false" managed="false"/>
+    </VBox>
+    <VBox spacing="4.0" styleClass="pipeline-board-intro">
+        <Label text="%pipeline.board-title" styleClass="card-title"/>
+        <Label text="%pipeline.drag-hint" styleClass="panel-hint" wrapText="true"/>
+    </VBox>
     <ScrollPane fitToHeight="true" fitToWidth="false" hbarPolicy="AS_NEEDED"
                 VBox.vgrow="ALWAYS" styleClass="kanban-scroll">
         <content>

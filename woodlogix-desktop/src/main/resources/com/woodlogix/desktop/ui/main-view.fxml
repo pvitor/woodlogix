@@ -7,52 +7,94 @@
 <?import javafx.scene.layout.HBox?>
 <?import javafx.scene.layout.StackPane?>
 <?import javafx.scene.layout.VBox?>
-<?import javafx.scene.text.Font?>
+<?import javafx.scene.shape.SVGPath?>
 
 <BorderPane styleClass="app-root" xmlns="http://javafx.com/javafx/17"
             xmlns:fx="http://javafx.com/fxml/1"
             fx:controller="com.woodlogix.desktop.ui.MainViewController">
     <left>
-        <VBox spacing="22.0" prefWidth="238.0" minWidth="238.0" styleClass="sidebar">
+        <VBox spacing="22.0" prefWidth="228.0" minWidth="190.0" maxWidth="248.0"
+              styleClass="sidebar">
             <padding>
-                <Insets bottom="20.0" left="16.0" right="16.0" top="22.0"/>
+                <Insets bottom="20.0" left="14.0" right="14.0" top="22.0"/>
             </padding>
             <VBox spacing="3.0" styleClass="brand-block">
-                <Label text="%app.brand" textFill="WHITE">
-                    <font><Font name="System Bold" size="21.0"/></font>
-                </Label>
+                <Label text="%app.brand" styleClass="brand-title"/>
                 <Label text="%app.subtitle" styleClass="sidebar-subtitle" wrapText="true"/>
             </VBox>
-            <VBox spacing="7.0" styleClass="navigation-list" VBox.vgrow="ALWAYS">
-                <Label text="%nav.workspace" styleClass="navigation-heading"/>
-                <Button fx:id="dashboardButton" text="%nav.dashboard"
-                        onAction="#showDashboard" styleClass="navigation-button">
-                    <graphic><Label text="⌂" styleClass="navigation-icon"/></graphic>
-                </Button>
-                <Button fx:id="customersButton" text="%tab.customers"
-                        onAction="#showCustomers" styleClass="navigation-button">
-                    <graphic><Label text="●" styleClass="navigation-icon"/></graphic>
-                </Button>
-                <Button fx:id="environmentsButton" text="%tab.environments"
-                        onAction="#showEnvironments" styleClass="navigation-button">
-                    <graphic><Label text="▦" styleClass="navigation-icon"/></graphic>
-                </Button>
-                <Button fx:id="materialsButton" text="%tab.materials"
-                        onAction="#showMaterials" styleClass="navigation-button">
-                    <graphic><Label text="▧" styleClass="navigation-icon"/></graphic>
-                </Button>
-                <Button fx:id="pricingButton" text="%tab.pricing"
-                        onAction="#showPricing" styleClass="navigation-button">
-                    <graphic><Label text="R$" styleClass="navigation-icon"/></graphic>
-                </Button>
-                <Button fx:id="pipelineButton" text="%tab.pipeline"
-                        onAction="#showPipeline" styleClass="navigation-button">
-                    <graphic><Label text="↗" styleClass="navigation-icon"/></graphic>
-                </Button>
-            </VBox>
-            <VBox spacing="3.0" styleClass="sidebar-footer">
-                <Label text="%app.brand" styleClass="sidebar-footer-brand"/>
-                <Label text="%nav.local-data" styleClass="sidebar-footer-detail"/>
+            <VBox spacing="16.0" styleClass="navigation-list" VBox.vgrow="ALWAYS">
+                <VBox spacing="5.0" styleClass="navigation-group">
+                    <Label text="%nav.workspace" styleClass="navigation-heading"/>
+                    <Button fx:id="dashboardButton" text="%nav.dashboard"
+                            onAction="#showDashboard" styleClass="navigation-button"
+                            contentDisplay="LEFT" graphicTextGap="10.0">
+                        <graphic>
+                            <StackPane styleClass="navigation-icon-slot">
+                                <SVGPath styleClass="navigation-icon"
+                                         content="M2 2 H7 V7 H2 Z M9 2 H14 V7 H9 Z M2 9 H7 V14 H2 Z M9 9 H14 V14 H9 Z"/>
+                            </StackPane>
+                        </graphic>
+                    </Button>
+                </VBox>
+                <VBox spacing="5.0" styleClass="navigation-group">
+                    <Label text="%nav.management" styleClass="navigation-heading"/>
+                    <Button fx:id="customersButton" text="%tab.customers"
+                            onAction="#showCustomers" styleClass="navigation-button"
+                            contentDisplay="LEFT" graphicTextGap="10.0">
+                        <graphic>
+                            <StackPane styleClass="navigation-icon-slot">
+                                <SVGPath styleClass="navigation-icon"
+                                         content="M8 8 A3 3 0 1 0 8 2 A3 3 0 0 0 8 8 M2 14 C2 11 4.5 9.5 8 9.5 C11.5 9.5 14 11 14 14 Z"/>
+                            </StackPane>
+                        </graphic>
+                    </Button>
+                    <Button fx:id="environmentsButton" text="%tab.environments"
+                            onAction="#showEnvironments" styleClass="navigation-button"
+                            contentDisplay="LEFT" graphicTextGap="10.0">
+                        <graphic>
+                            <StackPane styleClass="navigation-icon-slot">
+                                <SVGPath styleClass="navigation-icon"
+                                         content="M1.5 7 L8 2 L14.5 7 V14 H1.5 Z M6 14 V9 H10 V14"/>
+                            </StackPane>
+                        </graphic>
+                    </Button>
+                </VBox>
+                <VBox spacing="5.0" styleClass="navigation-group">
+                    <Label text="%nav.production" styleClass="navigation-heading"/>
+                    <Button fx:id="materialsButton" text="%tab.materials"
+                            onAction="#showMaterials" styleClass="navigation-button"
+                            contentDisplay="LEFT" graphicTextGap="10.0">
+                        <graphic>
+                            <StackPane styleClass="navigation-icon-slot">
+                                <SVGPath styleClass="navigation-icon"
+                                         content="M2 2 H14 V5 H2 Z M2 7 H14 V10 H2 Z M2 12 H14 V14 H2 Z"/>
+                            </StackPane>
+                        </graphic>
+                    </Button>
+                    <Button fx:id="pricingButton" text="%tab.pricing"
+                            onAction="#showPricing" styleClass="navigation-button"
+                            contentDisplay="LEFT" graphicTextGap="10.0">
+                        <graphic>
+                            <StackPane styleClass="navigation-icon-slot">
+                                <SVGPath styleClass="navigation-icon"
+                                         content="M3 1.5 H13 V14.5 H3 Z M5 4 H11 V6 H5 Z M5 8 H6 M8 8 H9 M11 8 H11.1 M5 11 H6 M8 11 H9 M11 11 H11.1"/>
+                            </StackPane>
+                        </graphic>
+                    </Button>
+                </VBox>
+                <VBox spacing="5.0" styleClass="navigation-group">
+                    <Label text="%nav.sales" styleClass="navigation-heading"/>
+                    <Button fx:id="pipelineButton" text="%tab.pipeline"
+                            onAction="#showPipeline" styleClass="navigation-button"
+                            contentDisplay="LEFT" graphicTextGap="10.0">
+                        <graphic>
+                            <StackPane styleClass="navigation-icon-slot">
+                                <SVGPath styleClass="navigation-icon"
+                                         content="M2 13 L6 9 L9 11 L14 4 M10 4 H14 V8"/>
+                            </StackPane>
+                        </graphic>
+                    </Button>
+                </VBox>
             </VBox>
         </VBox>
     </left>

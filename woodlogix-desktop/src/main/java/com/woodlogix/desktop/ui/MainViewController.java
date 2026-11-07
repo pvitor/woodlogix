@@ -107,6 +107,7 @@ public class MainViewController implements Initializable {
             Node view = loader.load();
             if (loader.getController() instanceof DashboardController dashboardController) {
                 dashboardController.setNavigationHandler(this::navigateFromDashboard);
+                viewRefreshers.put(viewPath, dashboardController::refreshData);
             }
             if (loader.getController() instanceof PricingController pricingController) {
                 viewRefreshers.put(viewPath, pricingController::refreshCatalogs);
