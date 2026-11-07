@@ -24,6 +24,7 @@ import javafx.scene.control.Tooltip;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
+import javafx.scene.shape.SVGPath;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Component;
 
@@ -117,6 +118,8 @@ public class MaterialController implements Initializable {
         materialLengthField.setPromptText("2750");
         materialWidthField.setPromptText("1840");
         materialPriceField.setPromptText("0,00");
+        styleNumericFields(materialThicknessField, materialLengthField, materialWidthField);
+        styleCurrencyField(materialPriceField);
         materialSaveButton.setText(text("materials.add-sheet"));
         materialSaveButton.getStyleClass().add("primary-button");
         materialSaveButton.setOnAction(event -> saveMaterial());
@@ -126,23 +129,23 @@ public class MaterialController implements Initializable {
         materialCancelButton.setManaged(false);
         materialCancelButton.setOnAction(event -> clearMaterialForm());
         materialForm.getChildren().setAll(
-                field("materials.name", materialNameField),
-                field("materials.color", materialColorField),
-                new HBox(8,
+                fieldRow(
+                        field("materials.name", materialNameField),
+                        field("materials.color", materialColorField)),
+                fieldRow(
                         field("materials.thickness", materialThicknessField),
                         field("materials.length", materialLengthField),
                         field("materials.sheet-width", materialWidthField),
                         field("materials.sheet-price", materialPriceField)),
                 formActions(materialCancelButton, materialSaveButton));
-        List.of(materialNameField, materialColorField, materialThicknessField,
-                materialLengthField, materialWidthField, materialPriceField)
-                .forEach(input -> HBox.setHgrow(input.getParent(), Priority.ALWAYS));
     }
 
     private void configureEdgeBandingForm() {
         edgeBandingNameField.setPromptText(text("materials.edgebanding-name-prompt"));
         edgeBandingWidthField.setPromptText("22");
         edgeBandingPriceField.setPromptText("0,00");
+        styleNumericFields(edgeBandingWidthField);
+        styleCurrencyField(edgeBandingPriceField);
         edgeBandingSaveButton.setText(text("materials.add-edgebanding"));
         edgeBandingSaveButton.getStyleClass().add("primary-button");
         edgeBandingSaveButton.setOnAction(event -> saveEdgeBanding());
@@ -153,7 +156,7 @@ public class MaterialController implements Initializable {
         edgeBandingCancelButton.setOnAction(event -> clearEdgeBandingForm());
         edgeBandingForm.getChildren().setAll(
                 field("materials.name", edgeBandingNameField),
-                new HBox(8,
+                fieldRow(
                         field("materials.width", edgeBandingWidthField),
                         field("materials.price-per-meter", edgeBandingPriceField)),
                 formActions(edgeBandingCancelButton, edgeBandingSaveButton));
@@ -163,6 +166,7 @@ public class MaterialController implements Initializable {
         hardwareNameField.setPromptText(text("materials.hardware-name-prompt"));
         hardwareUnitField.setPromptText(text("materials.unit-prompt"));
         hardwarePriceField.setPromptText("0,00");
+        styleCurrencyField(hardwarePriceField);
         hardwareSaveButton.setText(text("materials.add-hardware"));
         hardwareSaveButton.getStyleClass().add("primary-button");
         hardwareSaveButton.setOnAction(event -> saveHardware());
@@ -172,7 +176,7 @@ public class MaterialController implements Initializable {
         hardwareCancelButton.setManaged(false);
         hardwareCancelButton.setOnAction(event -> clearHardwareForm());
         hardwareForm.getChildren().setAll(
-                new HBox(8,
+                fieldRow(
                         field("materials.name", hardwareNameField),
                         field("materials.unit", hardwareUnitField),
                         field("materials.unit-price", hardwarePriceField)),
@@ -195,6 +199,7 @@ public class MaterialController implements Initializable {
                 this::editMaterial, this::deleteMaterial);
         materialTable.getColumns().setAll(name, color, thickness, dimensions, price, actions);
         materialTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
+        materialTable.setPlaceholder(emptyState("materials.empty-sheets"));
         actions.setMinWidth(78);
         actions.setPrefWidth(78);
     }
@@ -211,6 +216,7 @@ public class MaterialController implements Initializable {
                 this::editEdgeBanding, this::deleteEdgeBanding);
         edgeBandingTable.getColumns().setAll(name, width, price, actions);
         edgeBandingTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
+        edgeBandingTable.setPlaceholder(emptyState("materials.empty-edgebandings"));
         actions.setMinWidth(78);
         actions.setPrefWidth(78);
     }
@@ -226,6 +232,7 @@ public class MaterialController implements Initializable {
                 this::editHardware, this::deleteHardware);
         hardwareTable.getColumns().setAll(name, unit, price, actions);
         hardwareTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
+        hardwareTable.setPlaceholder(emptyState("materials.empty-hardware"));
         actions.setMinWidth(78);
         actions.setPrefWidth(78);
     }
@@ -237,15 +244,17 @@ public class MaterialController implements Initializable {
         TableColumn<T, Void> column = new TableColumn<>(text("column.actions"));
         column.setSortable(false);
         column.setCellFactory(ignored -> new TableCell<>() {
-            private final Button editButton = new Button("✏");
-            private final Button deleteButton = new Button("🗑");
+            private final Button editButton = actionButton(
+                    "tooltip.action-edit",
+                    "M3 11 L10.8 3.2 L13.8 6.2 L6 14 H3 Z M9.8 4.2 L12.8 7.2");
+            private final Button deleteButton = actionButton(
+                    "tooltip.action-delete",
+                    "M2 4 H14 M5 4 V2 H11 V4 M4 5 L5 14 H11 L12 5 M6.5 7 V12 M9.5 7 V12");
             private final HBox buttons = new HBox(5, editButton, deleteButton);
 
             {
                 editButton.getStyleClass().add("btn-edit");
                 deleteButton.getStyleClass().add("btn-delete");
-                editButton.setTooltip(new Tooltip(text("tooltip.action-edit")));
-                deleteButton.setTooltip(new Tooltip(text("tooltip.action-delete")));
                 buttons.setAlignment(Pos.CENTER);
                 editButton.setOnAction(event -> {
                     T row = getTableRow().getItem();
@@ -419,19 +428,28 @@ public class MaterialController implements Initializable {
 
     private void loadMaterials() {
         taskRunner.execute(materialService::findAll, messages,
-                items -> materialTable.setItems(FXCollections.observableArrayList(items)),
+                items -> {
+                    materialTable.setItems(FXCollections.observableArrayList(items));
+                    statusLabel.setText(text("status.synced"));
+                },
                 message -> statusLabel.setText(message));
     }
 
     private void loadEdgeBandings() {
         taskRunner.execute(edgeBandingService::findAll, messages,
-                items -> edgeBandingTable.setItems(FXCollections.observableArrayList(items)),
+                items -> {
+                    edgeBandingTable.setItems(FXCollections.observableArrayList(items));
+                    statusLabel.setText(text("status.synced"));
+                },
                 message -> statusLabel.setText(message));
     }
 
     private void loadHardware() {
         taskRunner.execute(hardwareService::findAll, messages,
-                items -> hardwareTable.setItems(FXCollections.observableArrayList(items)),
+                items -> {
+                    hardwareTable.setItems(FXCollections.observableArrayList(items));
+                    statusLabel.setText(text("status.synced"));
+                },
                 message -> statusLabel.setText(message));
     }
 
@@ -473,7 +491,45 @@ public class MaterialController implements Initializable {
         label.getStyleClass().add("field-label");
         VBox field = new VBox(6, label, input);
         field.getStyleClass().add("catalog-field");
+        HBox.setHgrow(field, Priority.ALWAYS);
+        input.setMaxWidth(Double.MAX_VALUE);
         return field;
+    }
+
+    private HBox fieldRow(VBox... fields) {
+        HBox row = new HBox(12, fields);
+        row.getStyleClass().add("catalog-field-row");
+        row.setAlignment(Pos.CENTER_LEFT);
+        return row;
+    }
+
+    private void styleNumericFields(TextField... fields) {
+        for (TextField field : fields) {
+            field.getStyleClass().add("catalog-numeric-field");
+        }
+    }
+
+    private void styleCurrencyField(TextField field) {
+        field.getStyleClass().add("catalog-numeric-field");
+        field.getStyleClass().add("catalog-currency-field");
+    }
+
+    private Label emptyState(String key) {
+        Label label = new Label(text(key));
+        label.getStyleClass().add("empty-state");
+        label.setWrapText(true);
+        return label;
+    }
+
+    private Button actionButton(String accessibleTextKey, String iconPath) {
+        Button button = new Button();
+        SVGPath icon = new SVGPath();
+        icon.setContent(iconPath);
+        icon.getStyleClass().add("table-action-icon");
+        button.setGraphic(icon);
+        button.setAccessibleText(text(accessibleTextKey));
+        button.setTooltip(new Tooltip(text(accessibleTextKey)));
+        return button;
     }
 
     private HBox formActions(Button cancel, Button save) {

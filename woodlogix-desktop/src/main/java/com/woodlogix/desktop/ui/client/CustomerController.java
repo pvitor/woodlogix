@@ -20,6 +20,7 @@ import javafx.scene.control.TableView;
 import javafx.scene.control.Tooltip;
 import javafx.scene.control.TextField;
 import javafx.scene.layout.HBox;
+import javafx.scene.shape.SVGPath;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.event.TransactionalEventListener;
 import javafx.util.Duration;
@@ -80,6 +81,9 @@ public class CustomerController implements Initializable {
                 new ReadOnlyStringWrapper(cell.getValue().address()));
         actionsColumn.setCellFactory(column -> createActionsCell(
                 this::edit, this::confirmDelete));
+        customerTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
+        actionsColumn.setMinWidth(88.0);
+        actionsColumn.setPrefWidth(100.0);
         validate();
         initialized = true;
         loadCustomers();
@@ -162,16 +166,18 @@ public class CustomerController implements Initializable {
             Consumer<T> editAction, Consumer<T> deleteAction
     ) {
         return new TableCell<>() {
-            private final Button editButton = new Button("✏");
-            private final Button deleteButton = new Button("🗑");
-            private final HBox buttons = new HBox(6, editButton, deleteButton);
-            {
-                setAlignment(Pos.CENTER);
-                editButton.getStyleClass().add("btn-edit");
-                deleteButton.getStyleClass().add("btn-delete");
-                editButton.setTooltip(new Tooltip(text("tooltip.action-edit")));
-                deleteButton.setTooltip(new Tooltip(text("tooltip.action-delete")));
-                buttons.setAlignment(Pos.CENTER);
+                private final Button editButton = actionButton(
+                        "tooltip.action-edit",
+                        "M3 11 L10.8 3.2 L13.8 6.2 L6 14 H3 Z M9.8 4.2 L12.8 7.2");
+                private final Button deleteButton = actionButton(
+                        "tooltip.action-delete",
+                        "M2 4 H14 M5 4 V2 H11 V4 M4 5 L5 14 H11 L12 5 M6.5 7 V12 M9.5 7 V12");
+                private final HBox buttons = new HBox(6, editButton, deleteButton);
+                {
+                    setAlignment(Pos.CENTER);
+                    editButton.getStyleClass().add("btn-edit");
+                    deleteButton.getStyleClass().add("btn-delete");
+                    buttons.setAlignment(Pos.CENTER);
                 editButton.setOnAction(event -> {
                     T row = getTableRow().getItem();
                     if (row != null) editAction.accept(row);
@@ -187,6 +193,17 @@ public class CustomerController implements Initializable {
                 setGraphic(empty ? null : buttons);
             }
         };
+    }
+
+    private Button actionButton(String accessibleTextKey, String iconPath) {
+        Button button = new Button();
+        SVGPath icon = new SVGPath();
+        icon.setContent(iconPath);
+        icon.getStyleClass().add("table-action-icon");
+        button.setGraphic(icon);
+        button.setAccessibleText(text(accessibleTextKey));
+        button.setTooltip(new Tooltip(text(accessibleTextKey)));
+        return button;
     }
 
     private void validate() {

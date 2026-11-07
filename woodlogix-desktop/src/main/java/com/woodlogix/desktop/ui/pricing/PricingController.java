@@ -40,6 +40,7 @@ import javafx.scene.control.TextField;
 import javafx.scene.control.Tooltip;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
+import javafx.scene.shape.SVGPath;
 import javafx.stage.Stage;
 import javafx.stage.WindowEvent;
 import javafx.util.StringConverter;
@@ -61,6 +62,13 @@ import java.util.function.Consumer;
 @Component
 @Lazy
 public class PricingController implements Initializable {
+    private static final String EDIT_ICON_PATH =
+            "M3 11.5 L10.8 3.7 C11.5 3 12.6 3 13.3 3.7 C14 4.4 14 5.5 "
+                    + "13.3 6.2 L5.5 14 H3 Z M9.8 4.7 L12.3 7.2";
+    private static final String DELETE_ICON_PATH =
+            "M2 4 H14 M6 4 V2 H10 V4 M4 4 L4.8 14 H11.2 L12 4 "
+                    + "M6.5 6 V12 M9.5 6 V12";
+
     private final SalesPipelineService salesPipelineService;
     private final ProjectWorkpieceService workpieceService;
     private final MaterialService materialService;
@@ -104,6 +112,8 @@ public class PricingController implements Initializable {
     @FXML private CheckBox rightEdgeCheckBox;
     @FXML private Button cancelEditButton;
     @FXML private Button addWorkpieceButton;
+    @FXML private VBox workpieceForm;
+    @FXML private Label editingIndicator;
     @FXML private TableView<EstimateDraftWorkpieceEntity> workpieceTable;
     @FXML private TableColumn<EstimateDraftWorkpieceEntity, String> workpieceNameColumn;
     @FXML private TableColumn<EstimateDraftWorkpieceEntity, String> dimensionsColumn;
@@ -676,6 +686,11 @@ public class PricingController implements Initializable {
 
     private void editWorkpiece(EstimateDraftWorkpieceEntity workpiece) {
         editingWorkpieceId = workpiece.getId();
+        if (!workpieceForm.getStyleClass().contains("editing")) {
+            workpieceForm.getStyleClass().add("editing");
+        }
+        editingIndicator.setVisible(true);
+        editingIndicator.setManaged(true);
         nameField.setText(workpiece.getName());
         lengthField.setText(formatDimension(workpiece.getLengthMm()));
         widthField.setText(formatDimension(workpiece.getWidthMm()));
@@ -795,8 +810,10 @@ public class PricingController implements Initializable {
             Consumer<EstimateDraftWorkpieceEntity> deleteAction
     ) {
         return new TableCell<>() {
-            private final Button editButton = new Button("✏");
-            private final Button deleteButton = new Button("🗑");
+            private final Button editButton = actionButton("tooltip.action-edit",
+                    EDIT_ICON_PATH);
+            private final Button deleteButton = actionButton("tooltip.action-delete",
+                    DELETE_ICON_PATH);
             private final HBox buttons = new HBox(5, editButton, deleteButton);
 
             {
@@ -804,8 +821,6 @@ public class PricingController implements Initializable {
                 buttons.setAlignment(Pos.CENTER);
                 editButton.getStyleClass().add("btn-edit");
                 deleteButton.getStyleClass().add("btn-delete");
-                editButton.setTooltip(new Tooltip(text("tooltip.action-edit")));
-                deleteButton.setTooltip(new Tooltip(text("tooltip.action-delete")));
                 editButton.setOnAction(event -> {
                     EstimateDraftWorkpieceEntity row = getTableRow().getItem();
                     if (row != null) {
@@ -826,6 +841,17 @@ public class PricingController implements Initializable {
                 setGraphic(empty ? null : buttons);
             }
         };
+    }
+
+    private Button actionButton(String accessibleTextKey, String iconPath) {
+        Button button = new Button();
+        SVGPath icon = new SVGPath();
+        icon.setContent(iconPath);
+        icon.getStyleClass().add("table-action-icon");
+        button.setGraphic(icon);
+        button.setAccessibleText(text(accessibleTextKey));
+        button.setTooltip(new Tooltip(text(accessibleTextKey)));
+        return button;
     }
 
     private Workpiece toCore(EstimateDraftWorkpieceEntity entity) {
@@ -864,6 +890,9 @@ public class PricingController implements Initializable {
 
     private void clearForm() {
         editingWorkpieceId = null;
+        workpieceForm.getStyleClass().remove("editing");
+        editingIndicator.setVisible(false);
+        editingIndicator.setManaged(false);
         nameField.clear();
         lengthField.clear();
         widthField.clear();

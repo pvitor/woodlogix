@@ -10,34 +10,46 @@
 <?import javafx.scene.control.TextField?>
 <?import javafx.scene.layout.FlowPane?>
 <?import javafx.scene.layout.HBox?>
+<?import javafx.geometry.Insets?>
 <?import javafx.scene.layout.VBox?>
 
-<VBox spacing="14.0" styleClass="tab-content" xmlns="http://javafx.com/javafx/17"
+<VBox spacing="16.0" styleClass="tab-content environment-page"
+      xmlns="http://javafx.com/javafx/17"
       xmlns:fx="http://javafx.com/fxml/1"
       fx:controller="com.woodlogix.desktop.ui.environment.EnvironmentController">
+    <padding>
+        <Insets bottom="28.0" left="28.0" right="28.0" top="26.0"/>
+    </padding>
     <VBox spacing="4.0">
         <Label text="%environment.section" styleClass="section-title"/>
         <Label text="%environment.subtitle" styleClass="subtitle"/>
     </VBox>
-    <VBox spacing="12.0" styleClass="form-card">
-        <Label text="%environment.form-title" styleClass="card-title"/>
-        <HBox spacing="12.0" alignment="TOP_LEFT">
-            <VBox spacing="7.0" prefWidth="280.0">
-                <Label text="%environment.customer-label" styleClass="field-label"/>
-                <ComboBox fx:id="customerComboBox" editable="true"
-                          promptText="%environment.customer-search" maxWidth="Infinity">
-                    <buttonCell>
-                        <ListCell/>
-                    </buttonCell>
-                </ComboBox>
-            </VBox>
-            <VBox spacing="8.0" HBox.hgrow="ALWAYS">
+    <VBox spacing="14.0" styleClass="form-card environment-form-panel">
+        <VBox spacing="4.0">
+            <Label text="%environment.form-title" styleClass="card-title"/>
+            <Label text="%environment.form-hint" styleClass="panel-hint" wrapText="true"/>
+        </VBox>
+        <VBox spacing="6.0" styleClass="environment-customer-group">
+            <Label text="%environment.customer-label" styleClass="field-label"/>
+            <ComboBox fx:id="customerComboBox" editable="true"
+                      promptText="%environment.customer-search" maxWidth="Infinity">
+                <buttonCell>
+                    <ListCell/>
+                </buttonCell>
+            </ComboBox>
+            <Label text="%environment.customer-hint" styleClass="field-hint" wrapText="true"/>
+        </VBox>
+        <VBox spacing="9.0" styleClass="environment-rooms-group">
+            <VBox spacing="4.0">
                 <Label text="%environment.type" styleClass="field-label"/>
-                <FlowPane fx:id="roomOptions" hgap="12.0" vgap="8.0"/>
-                <TextField fx:id="customRoomField" promptText="%environment.custom-room"/>
+                <Label text="%environment.rooms-hint" styleClass="field-hint" wrapText="true"/>
             </VBox>
-        </HBox>
-        <HBox spacing="8.0" alignment="CENTER_RIGHT">
+            <FlowPane fx:id="roomOptions" hgap="14.0" vgap="10.0"
+                      styleClass="environment-room-options"/>
+            <TextField fx:id="customRoomField" promptText="%environment.custom-room"
+                       maxWidth="420.0"/>
+        </VBox>
+        <HBox spacing="8.0" alignment="CENTER_RIGHT" styleClass="form-actions">
             <Button fx:id="cancelButton" text="%action.cancel" onAction="#cancelEdit"
                     styleClass="secondary-button" visible="false" managed="false"/>
             <Button fx:id="saveButton" text="%environment.register-button"
@@ -46,15 +58,21 @@
     </VBox>
     <Label fx:id="validationLabel" styleClass="validation-error"
            wrapText="true" visible="false" managed="false"/>
-    <VBox spacing="10.0" styleClass="table-card" VBox.vgrow="ALWAYS">
-        <Label text="%environment.list-title" styleClass="card-title"/>
+    <VBox spacing="10.0" styleClass="table-card environment-list-panel" VBox.vgrow="ALWAYS">
+        <VBox spacing="4.0">
+            <Label text="%environment.list-title" styleClass="card-title"/>
+            <Label text="%environment.list-hint" styleClass="panel-hint" wrapText="true"/>
+        </VBox>
         <TableView fx:id="environmentTable" VBox.vgrow="ALWAYS">
+            <placeholder>
+                <Label text="%environment.empty" styleClass="empty-state" wrapText="true"/>
+            </placeholder>
             <columns>
                 <TableColumn fx:id="customerColumn" text="%environment.customer-column"
-                             prefWidth="230.0"/>
-                <TableColumn fx:id="typesColumn" text="%environment.column" prefWidth="430.0"/>
+                             prefWidth="220.0"/>
+                <TableColumn fx:id="typesColumn" text="%environment.column" prefWidth="500.0"/>
                 <TableColumn fx:id="actionsColumn" text="%column.actions"
-                             prefWidth="250.0" sortable="false"/>
+                             prefWidth="100.0" minWidth="88.0" sortable="false"/>
             </columns>
         </TableView>
     </VBox>

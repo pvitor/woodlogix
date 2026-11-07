@@ -1,51 +1,83 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
+<?import javafx.geometry.Insets?>
 <?import javafx.scene.control.Label?>
 <?import javafx.scene.control.Tab?>
 <?import javafx.scene.control.TabPane?>
 <?import javafx.scene.layout.VBox?>
 
-<VBox spacing="12.0" styleClass="tab-content"
+<VBox spacing="14.0" styleClass="tab-content catalog-page"
       xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1"
       fx:controller="com.woodlogix.desktop.ui.pricing.MaterialController">
+    <padding>
+        <Insets bottom="28.0" left="28.0" right="28.0" top="26.0"/>
+    </padding>
     <VBox spacing="4.0">
         <Label text="%materials.section" styleClass="section-title"/>
         <Label text="%materials.subtitle" styleClass="subtitle"/>
     </VBox>
-    <TabPane fx:id="catalogTabs" VBox.vgrow="ALWAYS" tabClosingPolicy="UNAVAILABLE">
+    <TabPane fx:id="catalogTabs" styleClass="catalog-tabs" VBox.vgrow="ALWAYS"
+             tabClosingPolicy="UNAVAILABLE">
         <tabs>
             <Tab text="%materials.sheets">
-                <VBox spacing="12.0" styleClass="catalog-tab">
-                    <VBox spacing="10.0" styleClass="form-card">
-                        <Label text="%materials.sheet-form" styleClass="card-title"/>
+                <VBox spacing="12.0" styleClass="catalog-tab catalog-sheet-tab">
+                    <VBox spacing="10.0" styleClass="form-card catalog-form-panel">
+                        <VBox spacing="4.0">
+                            <Label text="%materials.sheet-form" styleClass="card-title"/>
+                            <Label text="%materials.sheet-form-hint"
+                                   styleClass="panel-hint" wrapText="true"/>
+                        </VBox>
                         <VBox fx:id="materialForm" spacing="9.0"/>
                     </VBox>
-                    <VBox spacing="8.0" styleClass="table-card" VBox.vgrow="ALWAYS">
-                        <Label text="%materials.sheet-list" styleClass="card-title"/>
+                    <VBox spacing="8.0" styleClass="table-card catalog-list-panel"
+                          VBox.vgrow="ALWAYS">
+                        <VBox spacing="4.0">
+                            <Label text="%materials.sheet-list" styleClass="card-title"/>
+                            <Label text="%materials.sheet-list-hint"
+                                   styleClass="panel-hint" wrapText="true"/>
+                        </VBox>
                         <VBox fx:id="materialTableHost" VBox.vgrow="ALWAYS"/>
                     </VBox>
                 </VBox>
             </Tab>
             <Tab text="%materials.edgebandings">
-                <VBox spacing="12.0" styleClass="catalog-tab">
-                    <VBox spacing="10.0" styleClass="form-card">
-                        <Label text="%materials.edgebanding-form" styleClass="card-title"/>
+                <VBox spacing="12.0" styleClass="catalog-tab catalog-edgebanding-tab">
+                    <VBox spacing="10.0" styleClass="form-card catalog-form-panel">
+                        <VBox spacing="4.0">
+                            <Label text="%materials.edgebanding-form" styleClass="card-title"/>
+                            <Label text="%materials.edgebanding-form-hint"
+                                   styleClass="panel-hint" wrapText="true"/>
+                        </VBox>
                         <VBox fx:id="edgeBandingForm" spacing="9.0"/>
                     </VBox>
-                    <VBox spacing="8.0" styleClass="table-card" VBox.vgrow="ALWAYS">
-                        <Label text="%materials.edgebanding-list" styleClass="card-title"/>
+                    <VBox spacing="8.0" styleClass="table-card catalog-list-panel"
+                          VBox.vgrow="ALWAYS">
+                        <VBox spacing="4.0">
+                            <Label text="%materials.edgebanding-list" styleClass="card-title"/>
+                            <Label text="%materials.edgebanding-list-hint"
+                                   styleClass="panel-hint" wrapText="true"/>
+                        </VBox>
                         <VBox fx:id="edgeBandingTableHost" VBox.vgrow="ALWAYS"/>
                     </VBox>
                 </VBox>
             </Tab>
             <Tab text="%materials.hardware">
-                <VBox spacing="12.0" styleClass="catalog-tab">
-                    <VBox spacing="10.0" styleClass="form-card">
-                        <Label text="%materials.hardware-form" styleClass="card-title"/>
+                <VBox spacing="12.0" styleClass="catalog-tab catalog-hardware-tab">
+                    <VBox spacing="10.0" styleClass="form-card catalog-form-panel">
+                        <VBox spacing="4.0">
+                            <Label text="%materials.hardware-form" styleClass="card-title"/>
+                            <Label text="%materials.hardware-form-hint"
+                                   styleClass="panel-hint" wrapText="true"/>
+                        </VBox>
                         <VBox fx:id="hardwareForm" spacing="9.0"/>
                     </VBox>
-                    <VBox spacing="8.0" styleClass="table-card" VBox.vgrow="ALWAYS">
-                        <Label text="%materials.hardware-list" styleClass="card-title"/>
+                    <VBox spacing="8.0" styleClass="table-card catalog-list-panel"
+                          VBox.vgrow="ALWAYS">
+                        <VBox spacing="4.0">
+                            <Label text="%materials.hardware-list" styleClass="card-title"/>
+                            <Label text="%materials.hardware-list-hint"
+                                   styleClass="panel-hint" wrapText="true"/>
+                        </VBox>
                         <VBox fx:id="hardwareTableHost" VBox.vgrow="ALWAYS"/>
                     </VBox>
                 </VBox>
