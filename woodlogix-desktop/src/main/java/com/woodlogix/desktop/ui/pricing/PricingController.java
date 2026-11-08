@@ -8,7 +8,7 @@ import com.woodlogix.core.model.Workpiece;
 import com.woodlogix.core.service.PricingEngine;
 import com.woodlogix.desktop.persistence.entity.EdgeBandingEntity;
 import com.woodlogix.desktop.persistence.entity.EstimateDraftWorkpieceEntity;
-import com.woodlogix.desktop.persistence.entity.HardwareEntity;
+import com.woodlogix.application.hardware.HardwareRow;
 import com.woodlogix.desktop.persistence.entity.MaterialEntity;
 import com.woodlogix.desktop.persistence.entity.ProjectWorkpieceEntity;
 import com.woodlogix.desktop.service.EdgeBandingService;
@@ -90,12 +90,12 @@ public class PricingController implements Initializable {
     private Stage hostWindow;
     private List<MaterialEntity> materials = List.of();
     private List<EdgeBandingEntity> edgeBandings = List.of();
-    private List<HardwareEntity> hardwares = List.of();
+    private List<HardwareRow> hardwares = List.of();
 
     @FXML private ComboBox<SalesProjectRow> projectComboBox;
     @FXML private ComboBox<MaterialEntity> materialComboBox;
     @FXML private ComboBox<EdgeBandingEntity> edgeBandingComboBox;
-    @FXML private ComboBox<HardwareEntity> hardwareComboBox;
+    @FXML private ComboBox<HardwareRow> hardwareComboBox;
     @FXML private TextField nameField;
     @FXML private TextField lengthField;
     @FXML private TextField widthField;
@@ -283,14 +283,14 @@ public class PricingController implements Initializable {
         });
         hardwareComboBox.setCellFactory(list -> new ListCell<>() {
             @Override
-            protected void updateItem(HardwareEntity item, boolean empty) {
+            protected void updateItem(HardwareRow item, boolean empty) {
                 super.updateItem(item, empty);
                 setText(empty || item == null ? null : hardwareName(item));
             }
         });
         hardwareComboBox.setButtonCell(new ListCell<>() {
             @Override
-            protected void updateItem(HardwareEntity item, boolean empty) {
+            protected void updateItem(HardwareRow item, boolean empty) {
                 super.updateItem(item, empty);
                 setText(empty || item == null ? null : hardwareName(item));
             }
@@ -383,7 +383,7 @@ public class PricingController implements Initializable {
 
     @FXML
     private void addHardware() {
-        HardwareEntity selectedHardware = hardwareComboBox.getValue();
+        HardwareRow selectedHardware = hardwareComboBox.getValue();
         Integer selectedQuantity = integer(hardwareQuantityField);
         if (selectedHardware == null || selectedQuantity == null || selectedQuantity <= 0) {
             showValidation("validation.hardware-usage-required");
@@ -415,7 +415,7 @@ public class PricingController implements Initializable {
         String selectedEdgeBandingId = edgeBandingComboBox.getValue() == null
                 ? null : edgeBandingComboBox.getValue().getId();
         String selectedHardwareId = hardwareComboBox.getValue() == null
-                ? null : hardwareComboBox.getValue().getId();
+                ? null : hardwareComboBox.getValue().id();
         restoringDraft = true;
         try {
             projectComboBox.setItems(FXCollections.observableArrayList(data.projects()));
@@ -432,7 +432,7 @@ public class PricingController implements Initializable {
                     edgeBandingComboBox);
             hardwares = List.copyOf(data.hardwares());
             hardwareComboBox.setItems(FXCollections.observableArrayList(hardwares));
-            selectById(hardwares, selectedHardwareId, HardwareEntity::getId,
+            selectById(hardwares, selectedHardwareId, HardwareRow::id,
                     hardwareComboBox);
         } finally {
             restoringDraft = false;
@@ -492,8 +492,8 @@ public class PricingController implements Initializable {
 
             hardwareUsages.clear();
             draft.hardwares().forEach(item -> {
-                HardwareEntity hardware = hardwares.stream()
-                        .filter(candidate -> candidate.getId().equals(item.hardwareId()))
+                HardwareRow hardware = hardwares.stream()
+                        .filter(candidate -> candidate.id().equals(item.hardwareId()))
                         .findFirst().orElseThrow(() ->
                                 new IllegalStateException("Draft hardware is no longer available"));
                 hardwareUsages.add(new HardwareUsage(toCore(hardware), item.quantity()));
@@ -645,7 +645,7 @@ public class PricingController implements Initializable {
             List<SalesProjectRow> projects,
             List<MaterialEntity> materials,
             List<EdgeBandingEntity> edgeBandings,
-            List<HardwareEntity> hardwares,
+            List<HardwareRow> hardwares,
             java.util.Optional<EstimateDraftData> draft
     ) {
     }
@@ -883,9 +883,9 @@ public class PricingController implements Initializable {
                 entity.getWidthMm().doubleValue(), entity.getPricePerMeter().doubleValue());
     }
 
-    private Hardware toCore(HardwareEntity entity) {
-        return new Hardware(entity.getId(), entity.getName(), entity.getUnit(),
-                entity.getUnitPrice().doubleValue());
+    private Hardware toCore(HardwareRow hardware) {
+        return new Hardware(hardware.id(), hardware.name(), hardware.unit(),
+                hardware.unitPrice().doubleValue());
     }
 
     private void clearForm() {
@@ -934,9 +934,9 @@ public class PricingController implements Initializable {
                 + " mm";
     }
 
-    private String hardwareName(HardwareEntity hardware) {
-        return hardware.getName() + " · " + currency(hardware.getUnitPrice())
-                + " / " + hardware.getUnit();
+    private String hardwareName(HardwareRow hardware) {
+        return hardware.name() + " · " + currency(hardware.unitPrice())
+                + " / " + hardware.unit();
     }
 
     private String currency(BigDecimal amount) {

@@ -183,7 +183,7 @@ class PersistenceRepositoryTest {
                 new BigDecimal("1840"), new BigDecimal("225.00")));
         edgeBandingService.update(edgeBanding.getId(), new EdgeBandingData(
                 "PVC premium", new BigDecimal("22"), new BigDecimal("4.00")));
-        hardwareService.update(hardware.getId(), new HardwareData(
+        hardwareService.update(hardware.id(), new HardwareData(
                 "Soft-close hinge", "PAIR", new BigDecimal("15.00")));
         workpieceService.update(workpiece.getId(), new ProjectWorkpieceData(
                 project.id(), "Updated door panel", new BigDecimal("710"),
@@ -192,14 +192,14 @@ class PersistenceRepositoryTest {
 
         assertEquals("MDF premium", materialService.findAll().get(0).getName());
         assertEquals("PVC premium", edgeBandingService.findAll().get(0).getName());
-        assertEquals("Soft-close hinge", hardwareService.findAll().get(0).getName());
+        assertEquals("Soft-close hinge", hardwareService.findAll().get(0).name());
         assertEquals("Updated door panel",
                 workpieceService.findByProject(project.id()).get(0).getName());
 
         workpieceService.delete(workpiece.getId());
         materialService.delete(material.getId());
         edgeBandingService.delete(edgeBanding.getId());
-        hardwareService.delete(hardware.getId());
+        hardwareService.delete(hardware.id());
         assertTrue(workpieceRepository.findAll().isEmpty());
         assertTrue(materialRepository.findAll().isEmpty());
         assertTrue(edgeBandingRepository.findAll().isEmpty());
@@ -229,7 +229,7 @@ class PersistenceRepositoryTest {
                 null, "Counter panel", new BigDecimal("1200"), new BigDecimal("600"),
                 2, material.getId(), edgeBanding.getId(), true, false, true, false);
         var hardwareUsage = new EstimateDraftData.EstimateDraftHardwareData(
-                hardware.getId(), 4);
+                hardware.id(), 4);
         EstimateDraftData freeDraft = new EstimateDraftData(
                 null, new BigDecimal("12.5"), new BigDecimal("3.5"),
                 new BigDecimal("42"), new BigDecimal("18"), new BigDecimal("35"),
@@ -250,7 +250,7 @@ class PersistenceRepositoryTest {
         assertThrows(IllegalStateException.class, () -> materialService.delete(material.getId()));
         assertThrows(IllegalStateException.class,
                 () -> edgeBandingService.delete(edgeBanding.getId()));
-        assertThrows(IllegalStateException.class, () -> hardwareService.delete(hardware.getId()));
+        assertThrows(IllegalStateException.class, () -> hardwareService.delete(hardware.id()));
 
         var customer = customerService.create(
                 new CustomerData("Draft project customer", null, null, null));

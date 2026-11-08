@@ -5,6 +5,7 @@ import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Supplier;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertSame;
@@ -69,6 +70,16 @@ class DeleteHardwareTest {
                 events.add("rollback");
                 throw exception;
             }
+        }
+
+        @Override
+        public <T> T executeWithResult(Supplier<T> operation) {
+            throw new UnsupportedOperationException();
+        }
+
+        @Override
+        public <T> T executeReadOnly(Supplier<T> operation) {
+            throw new UnsupportedOperationException();
         }
 
         @Override

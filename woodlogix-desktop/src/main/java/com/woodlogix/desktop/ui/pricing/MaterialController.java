@@ -1,7 +1,7 @@
 package com.woodlogix.desktop.ui.pricing;
 
 import com.woodlogix.desktop.persistence.entity.EdgeBandingEntity;
-import com.woodlogix.desktop.persistence.entity.HardwareEntity;
+import com.woodlogix.application.hardware.HardwareRow;
 import com.woodlogix.desktop.persistence.entity.MaterialEntity;
 import com.woodlogix.desktop.service.EdgeBandingData;
 import com.woodlogix.desktop.service.EdgeBandingService;
@@ -79,7 +79,7 @@ public class MaterialController implements Initializable {
     private final TextField hardwarePriceField = new TextField();
     private final Button hardwareSaveButton = new Button();
     private final Button hardwareCancelButton = new Button();
-    private final TableView<HardwareEntity> hardwareTable = new TableView<>();
+    private final TableView<HardwareRow> hardwareTable = new TableView<>();
 
     public MaterialController(
             MaterialService materialService,
@@ -222,13 +222,13 @@ public class MaterialController implements Initializable {
     }
 
     private void configureHardwareTable() {
-        TableColumn<HardwareEntity, String> name = column(
-                "materials.name", item -> item.getName());
-        TableColumn<HardwareEntity, String> unit = column(
-                "materials.unit", item -> item.getUnit());
-        TableColumn<HardwareEntity, String> price = column(
-                "materials.unit-price", item -> currency(item.getUnitPrice()));
-        TableColumn<HardwareEntity, Void> actions = actionColumn(
+        TableColumn<HardwareRow, String> name = column(
+                "materials.name", item -> item.name());
+        TableColumn<HardwareRow, String> unit = column(
+                "materials.unit", item -> item.unit());
+        TableColumn<HardwareRow, String> price = column(
+                "materials.unit-price", item -> currency(item.unitPrice()));
+        TableColumn<HardwareRow, Void> actions = actionColumn(
                 this::editHardware, this::deleteHardware);
         hardwareTable.getColumns().setAll(name, unit, price, actions);
         hardwareTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
@@ -368,11 +368,11 @@ public class MaterialController implements Initializable {
         edgeBandingCancelButton.setManaged(true);
     }
 
-    private void editHardware(HardwareEntity hardware) {
-        editingHardwareId = hardware.getId();
-        hardwareNameField.setText(hardware.getName());
-        hardwareUnitField.setText(hardware.getUnit());
-        hardwarePriceField.setText(format(hardware.getUnitPrice()));
+    private void editHardware(HardwareRow hardware) {
+        editingHardwareId = hardware.id();
+        hardwareNameField.setText(hardware.name());
+        hardwareUnitField.setText(hardware.unit());
+        hardwarePriceField.setText(format(hardware.unitPrice()));
         hardwareSaveButton.setText(text("action.save"));
         hardwareCancelButton.setVisible(true);
         hardwareCancelButton.setManaged(true);
@@ -406,13 +406,13 @@ public class MaterialController implements Initializable {
         }, message -> statusLabel.setText(message));
     }
 
-    private void deleteHardware(HardwareEntity hardware) {
-        if (!UiTaskRunner.confirm(format("dialog.confirm-delete-hardware", hardware.getName()),
+    private void deleteHardware(HardwareRow hardware) {
+        if (!UiTaskRunner.confirm(format("dialog.confirm-delete-hardware", hardware.name()),
                 messages)) {
             return;
         }
         taskRunner.execute(() -> {
-            hardwareService.delete(hardware.getId());
+            hardwareService.delete(hardware.id());
             return null;
         }, messages, ignored -> {
             statusLabel.setText(text("status.hardware-deleted"));

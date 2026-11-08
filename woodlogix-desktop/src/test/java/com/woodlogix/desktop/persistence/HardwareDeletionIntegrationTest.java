@@ -235,7 +235,7 @@ class HardwareDeletionIntegrationTest {
 
     private String createHardware() {
         return context.getBean(HardwareService.class)
-                .create(new HardwareData("Hinge", "UNIT", new BigDecimal("14.00"))).getId();
+                .create(new HardwareData("Hinge", "UNIT", new BigDecimal("14.00"))).id();
     }
 
     private List<Map<String, Object>> rows(String table) {

@@ -34,7 +34,7 @@ As versões estão declaradas no `pom.xml` raiz e nos POMs dos módulos.
 ### Implementação atual
 
 - **`woodlogix-core`** contém modelos de domínio, enums e cálculos (`PricingEngine`, `EdgeBandingCalculator`). Não depende de Spring, JavaFX ou JPA.
-- **`woodlogix-application`** contém o caso de uso de exclusão de ferragem e suas portas de persistência e transação, sem dependências de Spring ou JPA. A implementação transacional e o adaptador JPA permanecem no Desktop.
+- **`woodlogix-application`** contém os casos de uso do catálogo de ferragens e suas portas de persistência e transação, sem dependências de Spring ou JPA. A implementação transacional e os adaptadores JPA permanecem no Desktop.
 - **`woodlogix-desktop`** contém a aplicação JavaFX, controladores e FXML, serviços de casos de uso, entidades JPA, repositórios Spring Data, configuração SQLite e integração PDF.
 - **Serviços** coordenam operações como CRUD, validações, relações e transações. **Repositórios** estendem interfaces Spring Data JPA; não há DAOs JDBC manuais no fluxo atual.
 - **Integração JavaFX/Spring:** `WoodLogixDesktopLauncher` inicia `AppLauncher`; o contexto Spring é aberto no ciclo de vida JavaFX e encerrado em `stop()`. O `FXMLLoader` obtém controladores pelo contexto.
@@ -56,7 +56,7 @@ No **modo individual**, o fluxo aprovado é JavaFX → HTTP → Spring Boot loca
 
 No **modo compartilhado**, JavaFX acessará via HTTP um Spring Boot central na empresa, conectado a PostgreSQL. O acesso não dependerá obrigatoriamente de nuvem ou internet.
 
-Esses fluxos são **decisões de arquitetura, não funcionalidades disponíveis**: Application existe apenas para a exclusão de ferragem; ainda não existem o módulo Server, API/cliente HTTP nem persistência PostgreSQL. A migração prevista manterá o grafo JPA completo em um único módulo até sua transferência coordenada ao Server, seguida do corte dos consumidores JavaFX para HTTP, sem duas fontes de verdade.
+Esses fluxos são **decisões de arquitetura, não funcionalidades disponíveis**: Application contém o catálogo de ferragens; ainda não existem o módulo Server, API/cliente HTTP nem persistência PostgreSQL. A migração prevista manterá o grafo JPA completo em um único módulo até sua transferência coordenada ao Server, seguida do corte dos consumidores JavaFX para HTTP, sem duas fontes de verdade.
 
 ## 4. Funcionalidades
 
@@ -73,7 +73,7 @@ Legenda:
 | **Clientes** | **Implementado e testado no serviço/persistência; interface sem cobertura automatizada.** `CustomerService` implementa cadastro, edição, exclusão e busca por nome parcial, e-mail ou telefone, sem distinguir maiúsculas/minúsculas. No SQLite migrado, a FK bloqueia exclusão de clientes referenciados e a violação reconhecida é traduzida pelo serviço. `PersistenceRepositoryTest` cobre busca, operações e dados inválidos. A tela `CustomerController` coordena formulário, pesquisa e tabela; seus cliques não são cobertos por teste de UI. |
 | **Ambientes** | **Implementado e testado no serviço/persistência; interface sem cobertura automatizada.** `EnvironmentService` associa ambientes a clientes, aceita tipos de catálogo e tipos personalizados e elimina duplicados. Na sincronização, verifica referências de peças legadas, móveis e projetos antes da remoção; a exclusão individual e a sincronização também traduzem violações SQLite de FK reconhecidas. Testes cobrem esses casos e rollback. |
 | **Materiais / chapas** | **Implementado e testado no serviço/persistência; interface sem cobertura automatizada.** `MaterialService` implementa CRUD de chapas com nome, cor, espessura, dimensões e preço por chapa. Há validação e bloqueio de exclusão quando a chapa está referenciada por peça ou rascunho; `PersistenceRepositoryTest` cobre CRUD e referências. |
-| **Ferragens** | **Implementado e testado no serviço/persistência; interface sem cobertura automatizada.** `HardwareService` implementa CRUD de itens com unidade e preço unitário e protege itens usados pelo rascunho. CRUD e restrição de exclusão aparecem nos testes de persistência. |
+| **Ferragens** | **Implementado e testado no serviço/persistência; interface sem cobertura automatizada.** Os casos de uso do catálogo residem em Application; `HardwareService` é uma fachada no Desktop e os controllers usam records independentes de JPA. CRUD e restrição de exclusão são cobertos nos testes de persistência. |
 | **Orçamentos e cálculos** | **Cálculo implementado e testado em escopo limitado; fluxo de orçamento implementado com cobertura insuficiente de UI.** `PricingController` monta peças, seleciona projeto e insumos, mantém parâmetros e ferragens, atualiza o resumo e salva/restaura um rascunho ativo. As operações de peças de projetos e rascunho usam serviços separados. `PricingEngineTest` contém sete testes de domínio para áreas, consumo por área, desperdício, custo, margem e entradas inválidas. Não há testes automatizados que exercitem o fluxo JavaFX de edição, exclusão, resumo ou fechamento. O rascunho é único (`ACTIVE_DRAFT_ID = "active"`); não existe entidade de orçamento final/histórico de versões. |
 | **Fitas de borda** | **Implementado e testado em cálculo e persistência, com cobertura limitada.** A quantidade linear decorre das arestas selecionadas, dimensões e quantidade da peça; o custo usa metros lineares e preço cadastrado. Existem testes no `PricingEngineTest` para comprimento/custo e testes de CRUD/referência no `PersistenceRepositoryTest`. Isso não representa um plano de corte ou uma estimativa de sobras de fita. |
 | **Pipeline de vendas** | **Implementado e testado no serviço/persistência; interação visual sem cobertura automatizada.** `SalesPipelineService` cria projetos vinculados a clientes e ambientes, lista projetos por etapas (`CONTACT`, `MEASUREMENT_SCHEDULED`, `QUOTE_SENT`, `NEGOTIATION`, `CLOSED`) e movimenta projetos entre etapas. `KanbanController` apresenta cartões e implementa movimentação por arrastar e soltar. Testes cobrem criação/movimentação no serviço, não o gesto de arrastar na tela. |
@@ -93,13 +93,15 @@ Executado para este registro:
 ```text
 mvn -o test
 BUILD SUCCESS
-71 testes: 0 falhas, 0 erros, 0 ignorados
+79 testes: 0 falhas, 0 erros, 0 ignorados
 ```
 
 Grupos existentes:
 
 - `woodlogix-core/.../PricingEngineTest.java` — 7 testes de área, comprimento/custo de fita, agrupamento e arredondamento de chapas, desperdício, custo base, preço/margem e entradas inválidas.
 - `woodlogix-application/.../DeleteHardwareTest.java` — verifica a ordem da exclusão, referências, ID inexistente e propagação de falhas sem Spring ou JPA.
+- `woodlogix-application/.../HardwareCatalogTest.java` — verifica criação, validações, atualização, listagem e falhas do catálogo sem Spring ou JPA.
+- `woodlogix-desktop/.../HardwareCatalogIntegrationTest.java` — verifica catálogo, precisão dos valores testados e rollback após flush em SQLite temporário migrado.
 - `woodlogix-desktop/.../HardwareDeletionIntegrationTest.java` — verifica a exclusão por meio da fachada, FK real, transações e rollback após flush em SQLite temporário migrado.
 - `woodlogix-desktop/.../PersistenceRepositoryTest.java` — 22 testes de integração com Spring e SQLite temporário (`@TempDir`), cobrindo persistência de relações, CRUD e restrições de clientes, ambientes, insumos, ferragens, peças de projeto e rascunho; também pesquisa, dados inválidos, movimento de projeto e exportação PDF.
 - `woodlogix-desktop/.../ProposalPdfServiceTest.java` — 4 testes de conteúdo/exportação PDF e mensagens/currency em inglês e espanhol.

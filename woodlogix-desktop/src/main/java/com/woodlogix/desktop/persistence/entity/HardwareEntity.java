@@ -1,5 +1,6 @@
 package com.woodlogix.desktop.persistence.entity;
 
+import com.woodlogix.application.hardware.HardwareInput;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
@@ -12,7 +13,6 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
-import java.util.Objects;
 import java.util.UUID;
 
 @Entity
@@ -43,24 +43,9 @@ public class HardwareEntity {
     }
 
     public void update(String name, String unit, BigDecimal unitPrice) {
-        this.name = requireText(name, "name");
-        this.unit = requireText(unit, "unit");
-        this.unitPrice = requireNonNegative(unitPrice, "unitPrice");
-    }
-
-    private static BigDecimal requireNonNegative(BigDecimal value, String name) {
-        Objects.requireNonNull(value, name + " must not be null");
-        if (value.signum() < 0) {
-            throw new IllegalArgumentException(name + " must not be negative");
-        }
-        return value;
-    }
-
-    private static String requireText(String value, String name) {
-        Objects.requireNonNull(value, name + " must not be null");
-        if (value.isBlank()) {
-            throw new IllegalArgumentException(name + " must not be blank");
-        }
-        return value;
+        var input = new HardwareInput(name, unit, unitPrice);
+        this.name = input.name();
+        this.unit = input.unit();
+        this.unitPrice = input.unitPrice();
     }
 }
