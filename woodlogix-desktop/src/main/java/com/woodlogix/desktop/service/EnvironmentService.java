@@ -8,13 +8,15 @@ import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 import com.woodlogix.desktop.persistence.entity.CustomerEntity;
 import com.woodlogix.desktop.persistence.entity.ProjectEnvironmentEntity;
+import com.woodlogix.desktop.persistence.SqliteIntegrityErrors;
 import com.woodlogix.desktop.persistence.repository.CustomerRepository;
+import com.woodlogix.desktop.persistence.repository.FurnitureItemRepository;
 import com.woodlogix.desktop.persistence.repository.FurniturePartRepository;
 import com.woodlogix.desktop.persistence.repository.ProjectEnvironmentRepository;
 import com.woodlogix.desktop.persistence.repository.SalesProjectRepository;
 import com.woodlogix.desktop.service.event.EnvironmentChangedEvent;
 import org.springframework.context.ApplicationEventPublisher;
-import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.dao.DataAccessException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -36,6 +38,7 @@ public class EnvironmentService {
 
     private final CustomerRepository customerRepository;
     private final ProjectEnvironmentRepository environmentRepository;
+    private final FurnitureItemRepository furnitureItemRepository;
     private final FurniturePartRepository furniturePartRepository;
     private final SalesProjectRepository salesProjectRepository;
     private final ApplicationEventPublisher eventPublisher;
@@ -43,6 +46,7 @@ public class EnvironmentService {
     public EnvironmentService(
             CustomerRepository customerRepository,
             ProjectEnvironmentRepository environmentRepository,
+            FurnitureItemRepository furnitureItemRepository,
             FurniturePartRepository furniturePartRepository,
             SalesProjectRepository salesProjectRepository,
             ApplicationEventPublisher eventPublisher
@@ -52,6 +56,9 @@ public class EnvironmentService {
         );
         this.environmentRepository = Objects.requireNonNull(
                 environmentRepository, "environmentRepository must not be null"
+        );
+        this.furnitureItemRepository = Objects.requireNonNull(
+                furnitureItemRepository, "furnitureItemRepository must not be null"
         );
         this.furniturePartRepository = Objects.requireNonNull(
                 furniturePartRepository, "furniturePartRepository must not be null"
@@ -198,23 +205,27 @@ public class EnvironmentService {
         boolean hasLinkedRecords = environmentsToRemove.stream()
                 .anyMatch(environment -> furniturePartRepository
                                 .existsByProjectEnvironmentId(environment.getId())
+                        || furnitureItemRepository.existsByEnvironmentId(environment.getId())
                         || salesProjectRepository.existsByEnvironmentId(environment.getId()));
         if (hasLinkedRecords) {
             LOGGER.warn("Customer environment replacement rejected because rooms have linked records");
             throw new IllegalStateException("error.environment-has-related-records");
         }
 
-        try {
-            if (!environmentsToRemove.isEmpty()) {
+        if (!environmentsToRemove.isEmpty()) {
+            try {
                 environmentRepository.deleteAll(environmentsToRemove);
                 environmentRepository.flush();
+            } catch (DataAccessException exception) {
+                if (!SqliteIntegrityErrors.isForeignKeyViolation(exception)) {
+                    throw exception;
+                }
+                LOGGER.warn("Bulk environment replacement rejected by related records", exception);
+                throw new IllegalStateException("error.environment-has-related-records", exception);
             }
-            if (!environmentsToSave.isEmpty()) {
-                environmentRepository.saveAllAndFlush(environmentsToSave);
-            }
-        } catch (DataIntegrityViolationException exception) {
-            LOGGER.warn("Bulk environment replacement rejected by related records", exception);
-            throw new IllegalStateException("error.environment-has-related-records", exception);
+        }
+        if (!environmentsToSave.isEmpty()) {
+            environmentRepository.saveAllAndFlush(environmentsToSave);
         }
 
         eventPublisher.publishEvent(new EnvironmentChangedEvent());
@@ -251,12 +262,15 @@ public class EnvironmentService {
         try {
             environmentRepository.deleteById(environmentId);
             environmentRepository.flush();
-            eventPublisher.publishEvent(new EnvironmentChangedEvent());
-            LOGGER.info("Project environment deleted");
-        } catch (DataIntegrityViolationException exception) {
+        } catch (DataAccessException exception) {
+            if (!SqliteIntegrityErrors.isForeignKeyViolation(exception)) {
+                throw exception;
+            }
             LOGGER.warn("Environment deletion rejected because related records exist", exception);
             throw new IllegalStateException("error.environment-has-related-records", exception);
         }
+        eventPublisher.publishEvent(new EnvironmentChangedEvent());
+        LOGGER.info("Project environment deleted");
     }
 
     @Transactional(readOnly = true)

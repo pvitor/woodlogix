@@ -45,10 +45,11 @@ import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.context.PayloadApplicationEvent;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.orm.jpa.EntityManagerFactoryUtils;
-import org.springframework.orm.jpa.JpaSystemException;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.transaction.support.TransactionTemplate;
+import org.springframework.test.util.AopTestUtils;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import javax.sql.DataSource;
 import java.math.BigDecimal;
@@ -66,6 +67,11 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.AdditionalAnswers.delegatesTo;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.mock;
 
 class DeletionAndPipelineCharacterizationTest {
     @TempDir
@@ -189,7 +195,8 @@ class DeletionAndPipelineCharacterizationTest {
         var furnitureRows = rows("furniture_items");
         for (String id : List.of(customerWithEnvironment.id(), customerWithProject.id(),
                 customerWithFurniture.getId())) {
-            assertForeignKeyFailure(() -> withForeignKeys(() -> customers.delete(id)));
+            assertForeignKeyFailure("error.customer-has-related-records",
+                    () -> withForeignKeys(() -> customers.delete(id)));
         }
         assertEquals(customerRows, rows("customers"));
         assertEquals(environmentRows, rows("project_environments"));
@@ -225,7 +232,8 @@ class DeletionAndPipelineCharacterizationTest {
         var itemRows = rows("furniture_items");
         var environments = context.getBean(EnvironmentService.class);
         for (String id : List.of(partEnvironment.getId(), projectEnvironment.getId(), itemEnvironment.getId())) {
-            assertForeignKeyFailure(() -> withForeignKeys(() -> environments.delete(id)));
+            assertForeignKeyFailure("error.environment-has-related-records",
+                    () -> withForeignKeys(() -> environments.delete(id)));
         }
         assertEquals(environmentRows, rows("project_environments"));
         assertEquals(partRows, rows("furniture_parts"));
@@ -239,55 +247,82 @@ class DeletionAndPipelineCharacterizationTest {
     }
 
     @Test
-    void bulkEnvironmentRemovalIsBlockedByFurnitureItemForeignKey() {
+    void bulkEnvironmentRemovalChecksFurnitureItemBeforeChanges() {
         var customer = context.getBean(CustomerRepository.class).saveAndFlush(
                 new CustomerEntity("Customer", null, null, null));
         var environment = context.getBean(ProjectEnvironmentRepository.class)
                 .saveAndFlush(new ProjectEnvironmentEntity(customer, "Kitchen"));
+        context.getBean(ProjectEnvironmentRepository.class)
+                .saveAndFlush(new ProjectEnvironmentEntity(customer, "Bedroom"));
         context.getBean(FurnitureItemRepository.class).saveAndFlush(new FurnitureItemEntity(
                 customer, environment, "Cabinet", "Cabinet", "Wood",
                 money("100"), money("200"), money("300")));
         var itemsBefore = rows("furniture_items");
         var environmentsBefore = rows("project_environments");
 
-        assertForeignKeyFailure(() -> withForeignKeys(() -> context.getBean(EnvironmentService.class)
-                .deleteAllByCustomer(customer.getId())));
+        var environments = context.getBean(EnvironmentService.class);
+        var failure = assertThrows(IllegalStateException.class, () -> withForeignKeys(
+                () -> environments.saveOrUpdateCustomerEnvironments(
+                        customer.getId(), List.of("BEDROOM", "Pantry"))));
+        assertEquals("error.environment-has-related-records", failure.getMessage());
+        assertEquals(null, failure.getCause());
 
         assertEquals(environmentsBefore, rows("project_environments"));
         assertEquals(itemsBefore, rows("furniture_items"));
         assertEquals(0, countOrphans("furniture_items", "environment_id", "project_environments"));
+        var bulkFailure = assertThrows(IllegalStateException.class, () -> withForeignKeys(
+                () -> environments.deleteAllByCustomer(customer.getId())));
+        assertEquals("error.environment-has-related-records", bulkFailure.getMessage());
+        assertEquals(environmentsBefore, rows("project_environments"));
+        assertEquals(itemsBefore, rows("furniture_items"));
     }
 
     @Test
-    void sqliteForeignKeysBlockDeletionWhenConstraintsActuallyExist() {
-        var customer = context.getBean(CustomerService.class)
-                .create(new CustomerData("Customer", null, null, null));
-        var environment = context.getBean(EnvironmentService.class)
-                .create(new EnvironmentData(customer.id(), "Kitchen"));
-        jdbc.execute("CREATE TABLE test_customer_reference (id TEXT PRIMARY KEY, customer_id TEXT NOT NULL REFERENCES customers(id))");
-        jdbc.execute("CREATE TABLE test_environment_reference (id TEXT PRIMARY KEY, environment_id TEXT NOT NULL REFERENCES project_environments(id))");
-        jdbc.update("INSERT INTO test_customer_reference (id, customer_id) VALUES (?, ?)", "customer-ref", customer.id());
-        jdbc.update("INSERT INTO test_environment_reference (id, environment_id) VALUES (?, ?)", "environment-ref", environment.id());
-        assertEquals(1, jdbc.queryForList("PRAGMA foreign_key_list(test_customer_reference)").size());
-        assertEquals(1, jdbc.queryForList("PRAGMA foreign_key_list(test_environment_reference)").size());
-        var customerBefore = rows("customers");
-        var environmentBefore = rows("project_environments");
-        var customerReferenceBefore = rows("test_customer_reference");
-        var environmentReferenceBefore = rows("test_environment_reference");
-
-        var customerFailure = assertThrows(JpaSystemException.class, () -> withForeignKeys(
-                () -> context.getBean(CustomerService.class).delete(customer.id())));
-        var environmentFailure = assertThrows(JpaSystemException.class, () -> withForeignKeys(
-                () -> context.getBean(EnvironmentService.class).delete(environment.id())));
-
-        assertEquals("SQLITE_CONSTRAINT_FOREIGNKEY",
-                assertInstanceOf(SQLiteException.class, customerFailure.getMostSpecificCause()).getResultCode().name());
-        assertEquals("SQLITE_CONSTRAINT_FOREIGNKEY",
-                assertInstanceOf(SQLiteException.class, environmentFailure.getMostSpecificCause()).getResultCode().name());
-        assertEquals(customerBefore, rows("customers"));
-        assertEquals(environmentBefore, rows("project_environments"));
-        assertEquals(customerReferenceBefore, rows("test_customer_reference"));
-        assertEquals(environmentReferenceBefore, rows("test_environment_reference"));
+    void bulkEnvironmentRemovalRollsBackRealDeletionWhenForeignKeyRejectsLaterDelete() {
+        var customer = context.getBean(CustomerRepository.class).saveAndFlush(
+                new CustomerEntity("Customer", null, null, null));
+        var repository = context.getBean(ProjectEnvironmentRepository.class);
+        var free = repository.saveAndFlush(new ProjectEnvironmentEntity(customer, "Free"));
+        var linked = repository.saveAndFlush(new ProjectEnvironmentEntity(customer, "Linked"));
+        var itemRepository = context.getBean(FurnitureItemRepository.class);
+        itemRepository.saveAndFlush(new FurnitureItemEntity(customer, linked, "Cabinet",
+                "Cabinet", "Wood", money("100"), money("200"), money("300")));
+        var environmentRows = rows("project_environments");
+        var itemRows = rows("furniture_items");
+        var service = context.getBean(EnvironmentService.class);
+        var target = AopTestUtils.<EnvironmentService>getUltimateTargetObject(service);
+        var itemLookup = mock(FurnitureItemRepository.class, delegatesTo(itemRepository));
+        var interceptedRepository = mock(ProjectEnvironmentRepository.class, delegatesTo(repository));
+        var observedWrite = new AtomicBoolean();
+        doReturn(false).when(itemLookup).existsByEnvironmentId(linked.getId());
+        doAnswer(invocation -> {
+            assertTrue(TransactionSynchronizationManager.isActualTransactionActive());
+            repository.deleteById(free.getId());
+            repository.flush();
+            var entityManager = EntityManagerFactoryUtils.getTransactionalEntityManager(
+                    context.getBean(EntityManagerFactory.class));
+            assertTrue(entityManager != null && entityManager.isJoinedToTransaction());
+            long count = entityManager.createQuery(
+                            "SELECT COUNT(e) FROM ProjectEnvironmentEntity e WHERE e.id = :id", Long.class)
+                    .setParameter("id", free.getId()).getSingleResult();
+            assertEquals(0L, count);
+            observedWrite.set(true);
+            repository.deleteById(linked.getId());
+            return null;
+        }).when(interceptedRepository).deleteAll(any(Iterable.class));
+        ReflectionTestUtils.setField(target, "furnitureItemRepository", itemLookup);
+        ReflectionTestUtils.setField(target, "environmentRepository", interceptedRepository);
+        try {
+            assertForeignKeyFailure("error.environment-has-related-records", () -> withForeignKeys(
+                    () -> service.saveOrUpdateCustomerEnvironments(customer.getId(), List.of("New"))));
+        } finally {
+            ReflectionTestUtils.setField(target, "furnitureItemRepository", itemRepository);
+            ReflectionTestUtils.setField(target, "environmentRepository", repository);
+        }
+        assertTrue(observedWrite.get());
+        assertFalse(TransactionSynchronizationManager.isActualTransactionActive());
+        assertEquals(environmentRows, rows("project_environments"));
+        assertEquals(itemRows, rows("furniture_items"));
     }
 
     @Test
@@ -518,10 +553,13 @@ class DeletionAndPipelineCharacterizationTest {
         return jdbc.queryForList("SELECT * FROM " + table + " ORDER BY id");
     }
 
-    private void assertForeignKeyFailure(Runnable action) {
-        var failure = assertThrows(JpaSystemException.class, action::run);
+    private void assertForeignKeyFailure(String message, Runnable action) {
+        var failure = assertThrows(IllegalStateException.class, action::run);
+        assertEquals(message, failure.getMessage());
+        var persistenceFailure = assertInstanceOf(
+                org.springframework.dao.DataAccessException.class, failure.getCause());
         assertEquals("SQLITE_CONSTRAINT_FOREIGNKEY",
-                assertInstanceOf(SQLiteException.class, failure.getMostSpecificCause()).getResultCode().name());
+                assertInstanceOf(SQLiteException.class, persistenceFailure.getMostSpecificCause()).getResultCode().name());
     }
 
     private void assertForeignKeys(String table, Set<String> expected) {

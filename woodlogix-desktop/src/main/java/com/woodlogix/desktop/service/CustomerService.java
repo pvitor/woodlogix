@@ -3,6 +3,7 @@ package com.woodlogix.desktop.service;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.validation.Valid;
 import com.woodlogix.desktop.persistence.entity.CustomerEntity;
+import com.woodlogix.desktop.persistence.SqliteIntegrityErrors;
 import com.woodlogix.desktop.persistence.repository.CustomerRepository;
 import com.woodlogix.desktop.service.event.CustomerChangedEvent;
 import org.slf4j.Logger;
@@ -11,7 +12,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.validation.annotation.Validated;
-import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.dao.DataAccessException;
 
 import java.util.List;
 import java.util.Objects;
@@ -94,12 +95,15 @@ public class CustomerService {
         try {
             customerRepository.deleteById(customerId);
             customerRepository.flush();
-            eventPublisher.publishEvent(new CustomerChangedEvent());
-            LOGGER.info("Customer deleted");
-        } catch (DataIntegrityViolationException exception) {
+        } catch (DataAccessException exception) {
+            if (!SqliteIntegrityErrors.isForeignKeyViolation(exception)) {
+                throw exception;
+            }
             LOGGER.warn("Customer deletion rejected because related records exist", exception);
             throw new IllegalStateException("error.customer-has-related-records", exception);
         }
+        eventPublisher.publishEvent(new CustomerChangedEvent());
+        LOGGER.info("Customer deleted");
     }
 
     private CustomerRow toRow(CustomerEntity customer) {

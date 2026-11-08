@@ -21,6 +21,7 @@ O problema que pretende resolver é a dispersão de informações operacionais e
 | Spring Boot | Contexto local embutido, versão `3.5.16`, sem aplicação web (`spring.main.web-application-type=none`). |
 | Spring Data JPA / Hibernate | Repositórios e persistência; dialeto SQLite via `hibernate-community-dialects`. |
 | SQLite | Banco de dados local, configurável. Driver `sqlite-jdbc` `3.42.0.0`. |
+| Flyway | Migração inicial versionada do schema SQLite; versão `11.7.2` gerenciada pelo Spring Boot. |
 | Apache PDFBox | Geração e leitura de propostas PDF; versão `3.0.5`. |
 | JUnit 5, Mockito e Spring Boot Test | Testes unitários e de integração existentes. |
 | Lombok | Redução pontual de código repetitivo. |
@@ -35,6 +36,7 @@ As versões estão declaradas no `pom.xml` raiz e nos POMs dos módulos.
 - **Integração JavaFX/Spring:** `WoodLogixDesktopLauncher` inicia `AppLauncher`; o contexto Spring é aberto no ciclo de vida JavaFX e encerrado em `stop()`. O `FXMLLoader` obtém controladores pelo contexto.
 - **Trabalho assíncrono:** operações de interface que consultam ou alteram dados usam `UiTaskRunner`, com `Task` em executor próprio e atualização da interface nos callbacks JavaFX.
 - **Persistência local:** `DatabaseConfiguration` cria o diretório do banco e configura a conexão SQLite e a opção de chaves estrangeiras. O caminho padrão está em `config.properties` e pode ser substituído por configuração externa, propriedade de sistema ou `WOODLOGIX_DATABASE_PATH`.
+- **Schema SQLite:** Flyway aplica `V1__initial_sqlite_schema.sql` em bancos novos, com chaves estrangeiras físicas; Hibernate usa `ddl-auto=validate`. A migração de bancos não vazios sem histórico Flyway ainda não foi implementada.
 - **Interface e idioma:** as rotas atuais são Dashboard, Clientes, Ambientes, Catálogo de insumos, Orçamento e Funil de vendas. Os bundles `messages.properties`, `messages_en_US.properties` e `messages_es_ES.properties` fornecem os textos; o idioma é selecionado por `woodlogix.ui.locale`.
 
 ## 4. Funcionalidades
@@ -70,9 +72,9 @@ O consumo de chapas é **estimativa por área**, não otimização de corte: o c
 Executado para este registro:
 
 ```text
-mvn -o -pl woodlogix-desktop -am test
+mvn -o test
 BUILD SUCCESS
-34 testes: 0 falhas, 0 erros, 0 ignorados
+60 testes: 0 falhas, 0 erros, 0 ignorados
 ```
 
 Grupos existentes:
@@ -81,6 +83,10 @@ Grupos existentes:
 - `woodlogix-desktop/.../PersistenceRepositoryTest.java` — 22 testes de integração com Spring e SQLite temporário (`@TempDir`), cobrindo persistência de relações, CRUD e restrições de clientes, ambientes, insumos, ferragens, peças de projeto e rascunho; também pesquisa, dados inválidos, movimento de projeto e exportação PDF.
 - `woodlogix-desktop/.../ProposalPdfServiceTest.java` — 4 testes de conteúdo/exportação PDF e mensagens/currency em inglês e espanhol.
 - `woodlogix-desktop/.../ConfigLoaderTest.java` — 1 teste de configuração externa.
+- `woodlogix-desktop/.../DeletionAndPipelineCharacterizationTest.java` — caracteriza exclusões com FKs reais, integridade e pipeline em SQLite temporário, incluindo rollback de exclusão em lote.
+- `woodlogix-desktop/.../EnvironmentAndDraftCharacterizationTest.java` — caracteriza sincronização de ambientes, rascunhos e rollback com escritas reais.
+- `woodlogix-desktop/.../SqliteMigrationTest.java` — testa aplicação e reabertura da migração, recusa de banco não vazio sem histórico e validação de schema.
+- `woodlogix-desktop/.../DeletionErrorTranslationTest.java` — verifica reconhecimento seletivo de violações de FK SQLite e propagação de outros erros.
 
 **Lacunas de teste:** não há testes automatizados JavaFX/FXML para navegação, interação de formulário, arrastar e soltar, atualização visual de resumo, salvamento automático, restauração ou fechamento com alterações pendentes. Os testes do motor não validam aproveitamento real de chapas, ampla precisão monetária, regras de marcenaria de um móvel completo ou arredondamentos em vários cenários de produção. A exportação PDF não tem cobertura de paginação ou de integração com os valores calculados do orçamento.
 
@@ -90,7 +96,7 @@ Grupos existentes:
 - **Consumo de chapas:** o cálculo por área não considera geometria, rotação, orientação/veio, espessura do corte, margens ou reaproveitamento de retalhos. O valor não deve ser interpretado como plano de corte ou garantia de quantidade de compra.
 - **Escopo do orçamento:** o sistema persiste um rascunho ativo e peças vinculadas a projetos, mas não um histórico de orçamentos emitidos. A proposta PDF exporta o valor comercial salvo no projeto, não o preço sugerido atualizado pelo cálculo do rascunho.
 - **Validações:** há validações nos modelos, records, serviços, entidades e na interface, mas elas não são uniformes em todos os caminhos. Os testes cobrem casos concretos; não demonstram uma auditoria completa de todas as combinações/limites.
-- **Integridade e evolução do banco:** SQLite é local e a configuração ativa chaves estrangeiras. Hibernate está configurado com `ddl-auto=update`; não foram encontrados scripts/versionamento de migrações. Mudanças futuras de esquema devem ser avaliadas com cuidado para preservar bancos existentes.
+- **Integridade e evolução do banco:** a V1 do Flyway cria FKs físicas em bancos novos; sua fiscalização depende de `woodlogix.database.foreign-keys=true`, valor padrão configurável. A sincronização de ambientes verifica referências de peças, móveis e projetos; exclusões de clientes e ambientes traduzem violações SQLite de FK reconhecidas. Bancos anteriores sem histórico Flyway não são migrados automaticamente e exigem um plano específico de backup, diagnóstico e migração. Hibernate `validate` não substitui a verificação de FKs físicas.
 - **Tratamento de erros:** `UiTaskRunner` registra falhas de operações assíncronas e apresenta mensagem localizada com detalhes técnicos expansíveis. A experiência de erro não tem testes de interface, e operações/exportação não foram verificadas em todas as falhas de sistema de arquivos ou banco.
 - **Experiência do usuário:** as telas atuais carregam e a navegação foi verificada, inclusive em janela reduzida, mas a automação não valida acessibilidade, escala de tela, todos os tamanhos, estados de falha nem fluxos completos. A UI e o Kanban não têm testes de interação automatizados.
 - **Dados legados de móveis:** entidades e repositórios de móveis/partes permanecem, mas não há fluxo de usuário correspondente identificado; não assumir que cadastro ou projeto completo de móveis esteja disponível.

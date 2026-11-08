@@ -7,6 +7,8 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import java.util.List;
 
 public interface FurnitureItemRepository extends JpaRepository<FurnitureItemEntity, String> {
+    boolean existsByEnvironmentId(String environmentId);
+
     @EntityGraph(attributePaths = {"customer", "environment"})
     List<FurnitureItemEntity> findAllByCustomerIdOrderByNameAsc(String customerId);
 
