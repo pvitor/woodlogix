@@ -85,7 +85,6 @@ class PersistenceRepositoryTest {
                         "--spring.main.banner-mode=off",
                         "--logging.level.root=ERROR",
                         "--logging.file.name=",
-                        "--spring.jpa.hibernate.ddl-auto=create-drop",
                         "--woodlogix.database.path="
                                 + temporaryDirectory.resolve("woodlogix-test.db")
                 );
