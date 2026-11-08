@@ -34,6 +34,7 @@ As versões estão declaradas no `pom.xml` raiz e nos POMs dos módulos.
 ### Implementação atual
 
 - **`woodlogix-core`** contém modelos de domínio, enums e cálculos (`PricingEngine`, `EdgeBandingCalculator`). Não depende de Spring, JavaFX ou JPA.
+- **`woodlogix-application`** contém o caso de uso de exclusão de ferragem e suas portas de persistência e transação, sem dependências de Spring ou JPA. A implementação transacional e o adaptador JPA permanecem no Desktop.
 - **`woodlogix-desktop`** contém a aplicação JavaFX, controladores e FXML, serviços de casos de uso, entidades JPA, repositórios Spring Data, configuração SQLite e integração PDF.
 - **Serviços** coordenam operações como CRUD, validações, relações e transações. **Repositórios** estendem interfaces Spring Data JPA; não há DAOs JDBC manuais no fluxo atual.
 - **Integração JavaFX/Spring:** `WoodLogixDesktopLauncher` inicia `AppLauncher`; o contexto Spring é aberto no ciclo de vida JavaFX e encerrado em `stop()`. O `FXMLLoader` obtém controladores pelo contexto.
@@ -42,7 +43,7 @@ As versões estão declaradas no `pom.xml` raiz e nos POMs dos módulos.
 - **Schema SQLite:** Flyway aplica `V1__initial_sqlite_schema.sql` em bancos novos, com chaves estrangeiras físicas; Hibernate usa `ddl-auto=validate`. A migração de bancos não vazios sem histórico Flyway ainda não foi implementada.
 - **Interface e idioma:** as rotas atuais são Dashboard, Clientes, Ambientes, Catálogo de insumos, Orçamento e Funil de vendas. Os bundles `messages.properties`, `messages_en_US.properties` e `messages_es_ES.properties` fornecem os textos; o idioma é selecionado por `woodlogix.ui.locale`.
 
-### Direção arquitetural aprovada — ainda não implementada
+### Direção arquitetural aprovada — parcialmente implementada
 
 A aplicação terá uma única base de código, com casos de uso e regras compartilhados:
 
@@ -55,7 +56,7 @@ No **modo individual**, o fluxo aprovado é JavaFX → HTTP → Spring Boot loca
 
 No **modo compartilhado**, JavaFX acessará via HTTP um Spring Boot central na empresa, conectado a PostgreSQL. O acesso não dependerá obrigatoriamente de nuvem ou internet.
 
-Esses fluxos são **decisões de arquitetura, não funcionalidades disponíveis**: hoje não existem os módulos Application e Server, API/cliente HTTP nem persistência PostgreSQL. A migração prevista manterá o grafo JPA completo em um único módulo até sua transferência coordenada ao Server, seguida do corte dos consumidores JavaFX para HTTP, sem duas fontes de verdade.
+Esses fluxos são **decisões de arquitetura, não funcionalidades disponíveis**: Application existe apenas para a exclusão de ferragem; ainda não existem o módulo Server, API/cliente HTTP nem persistência PostgreSQL. A migração prevista manterá o grafo JPA completo em um único módulo até sua transferência coordenada ao Server, seguida do corte dos consumidores JavaFX para HTTP, sem duas fontes de verdade.
 
 ## 4. Funcionalidades
 
@@ -92,12 +93,14 @@ Executado para este registro:
 ```text
 mvn -o test
 BUILD SUCCESS
-60 testes: 0 falhas, 0 erros, 0 ignorados
+71 testes: 0 falhas, 0 erros, 0 ignorados
 ```
 
 Grupos existentes:
 
 - `woodlogix-core/.../PricingEngineTest.java` — 7 testes de área, comprimento/custo de fita, agrupamento e arredondamento de chapas, desperdício, custo base, preço/margem e entradas inválidas.
+- `woodlogix-application/.../DeleteHardwareTest.java` — verifica a ordem da exclusão, referências, ID inexistente e propagação de falhas sem Spring ou JPA.
+- `woodlogix-desktop/.../HardwareDeletionIntegrationTest.java` — verifica a exclusão por meio da fachada, FK real, transações e rollback após flush em SQLite temporário migrado.
 - `woodlogix-desktop/.../PersistenceRepositoryTest.java` — 22 testes de integração com Spring e SQLite temporário (`@TempDir`), cobrindo persistência de relações, CRUD e restrições de clientes, ambientes, insumos, ferragens, peças de projeto e rascunho; também pesquisa, dados inválidos, movimento de projeto e exportação PDF.
 - `woodlogix-desktop/.../ProposalPdfServiceTest.java` — 4 testes de conteúdo/exportação PDF e mensagens/currency em inglês e espanhol.
 - `woodlogix-desktop/.../ConfigLoaderTest.java` — 1 teste de configuração externa.

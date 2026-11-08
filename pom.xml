@@ -13,6 +13,7 @@
 
     <modules>
         <module>woodlogix-core</module>
+        <module>woodlogix-application</module>
         <module>woodlogix-desktop</module>
     </modules>
 

@@ -1,13 +1,14 @@
 package com.woodlogix.desktop.service;
 
+import com.woodlogix.application.hardware.DeleteHardware;
+import com.woodlogix.application.hardware.HardwareNotFoundException;
+import com.woodlogix.desktop.persistence.SqliteIntegrityErrors;
 import com.woodlogix.desktop.persistence.entity.HardwareEntity;
-import com.woodlogix.desktop.persistence.repository.EstimateDraftRepository;
 import com.woodlogix.desktop.persistence.repository.HardwareRepository;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.validation.Valid;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.validation.annotation.Validated;
@@ -20,14 +21,14 @@ import java.util.Objects;
 public class HardwareService {
     private static final Logger LOGGER = LoggerFactory.getLogger(HardwareService.class);
     private final HardwareRepository hardwareRepository;
-    private final EstimateDraftRepository estimateDraftRepository;
+    private final DeleteHardware deleteHardware;
 
     public HardwareService(
             HardwareRepository hardwareRepository,
-            EstimateDraftRepository estimateDraftRepository
+            DeleteHardware deleteHardware
     ) {
         this.hardwareRepository = Objects.requireNonNull(hardwareRepository);
-        this.estimateDraftRepository = Objects.requireNonNull(estimateDraftRepository);
+        this.deleteHardware = Objects.requireNonNull(deleteHardware);
     }
 
     @Transactional
@@ -48,18 +49,15 @@ public class HardwareService {
         return updated;
     }
 
-    @Transactional
     public void delete(String id) {
-        HardwareEntity hardware = hardwareRepository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("error.hardware-not-found"));
-        if (estimateDraftRepository.existsByHardwaresHardwareId(id)) {
-            LOGGER.warn("Hardware deletion rejected because it is referenced by the active draft");
-            throw new IllegalStateException("error.hardware-has-related-records");
-        }
         try {
-            hardwareRepository.delete(hardware);
-            hardwareRepository.flush();
-        } catch (DataIntegrityViolationException exception) {
+            deleteHardware.execute(id);
+        } catch (HardwareNotFoundException exception) {
+            throw new EntityNotFoundException(exception.getMessage(), exception);
+        } catch (RuntimeException exception) {
+            if (!SqliteIntegrityErrors.isForeignKeyViolation(exception)) {
+                throw exception;
+            }
             LOGGER.warn("Hardware deletion rejected because it is referenced", exception);
             throw new IllegalStateException("error.hardware-has-related-records", exception);
         }
