@@ -1,7 +1,8 @@
 # WoodLogix — estado do projeto
 
-**Referência:** branch `main`, commit `d639fcd` (PR #1 integrada).  
-**Verificação de testes registrada em:** 6 nov. 2026.
+**Referência:** branch `feature/arquitetura-nova`, commit `60ebef9`.
+
+**Verificação de testes registrada em:** 8 nov. 2026.
 
 Este documento descreve o que foi encontrado no código, na persistência e nos testes. A existência de uma tela, entidade ou repositório, por si só, não significa que um fluxo de produto esteja completo. As instruções de contribuição e arquitetura permanecem em `.github/`; este arquivo registra o estado funcional, lacunas e evidências.
 
@@ -30,6 +31,8 @@ As versões estão declaradas no `pom.xml` raiz e nos POMs dos módulos.
 
 ## 3. Arquitetura
 
+### Implementação atual
+
 - **`woodlogix-core`** contém modelos de domínio, enums e cálculos (`PricingEngine`, `EdgeBandingCalculator`). Não depende de Spring, JavaFX ou JPA.
 - **`woodlogix-desktop`** contém a aplicação JavaFX, controladores e FXML, serviços de casos de uso, entidades JPA, repositórios Spring Data, configuração SQLite e integração PDF.
 - **Serviços** coordenam operações como CRUD, validações, relações e transações. **Repositórios** estendem interfaces Spring Data JPA; não há DAOs JDBC manuais no fluxo atual.
@@ -38,6 +41,21 @@ As versões estão declaradas no `pom.xml` raiz e nos POMs dos módulos.
 - **Persistência local:** `DatabaseConfiguration` cria o diretório do banco e configura a conexão SQLite e a opção de chaves estrangeiras. O caminho padrão está em `config.properties` e pode ser substituído por configuração externa, propriedade de sistema ou `WOODLOGIX_DATABASE_PATH`.
 - **Schema SQLite:** Flyway aplica `V1__initial_sqlite_schema.sql` em bancos novos, com chaves estrangeiras físicas; Hibernate usa `ddl-auto=validate`. A migração de bancos não vazios sem histórico Flyway ainda não foi implementada.
 - **Interface e idioma:** as rotas atuais são Dashboard, Clientes, Ambientes, Catálogo de insumos, Orçamento e Funil de vendas. Os bundles `messages.properties`, `messages_en_US.properties` e `messages_es_ES.properties` fornecem os textos; o idioma é selecionado por `woodlogix.ui.locale`.
+
+### Direção arquitetural aprovada — ainda não implementada
+
+A aplicação terá uma única base de código, com casos de uso e regras compartilhados:
+
+- **`woodlogix-core`:** domínio e regras puras, sem dependências de infraestrutura.
+- **`woodlogix-application`:** casos de uso, coordenação e portas; depende de Core e não de Spring ou JPA. Casos de uso compostos expressarão atomicidade por uma porta de transação implementada pela infraestrutura.
+- **`woodlogix-server`:** Spring Boot, API HTTP, segurança e adaptadores de persistência; depende de Application e Core, não de Desktop.
+- **`woodlogix-desktop`:** JavaFX, apresentação e cliente HTTP.
+
+No **modo individual**, o fluxo aprovado é JavaFX → HTTP → Spring Boot local → SQLite, sem internet ou sincronização entre instalações. A direção é executar o servidor na mesma JVM, restrito a loopback; sua viabilidade, empacotamento e consumo de recursos ainda precisam ser comprovados.
+
+No **modo compartilhado**, JavaFX acessará via HTTP um Spring Boot central na empresa, conectado a PostgreSQL. O acesso não dependerá obrigatoriamente de nuvem ou internet.
+
+Esses fluxos são **decisões de arquitetura, não funcionalidades disponíveis**: hoje não existem os módulos Application e Server, API/cliente HTTP nem persistência PostgreSQL. A migração prevista manterá o grafo JPA completo em um único módulo até sua transferência coordenada ao Server, seguida do corte dos consumidores JavaFX para HTTP, sem duas fontes de verdade.
 
 ## 4. Funcionalidades
 
@@ -51,8 +69,8 @@ Legenda:
 | Área | Estado real e evidências |
 |---|---|
 | **Dashboard** | **Implementado, cobertura automatizada insuficiente.** `DashboardController` carrega de forma assíncrona a contagem de clientes, oportunidades fora da etapa `CLOSED`, contagem por etapa e existência do rascunho ativo. Os atalhos navegam para módulos existentes. Não há teste automatizado do controlador ou da interface; dados são consultados de serviços reais, não de fixtures de produção. |
-| **Clientes** | **Implementado e testado no serviço/persistência; interface sem cobertura automatizada.** `CustomerService` implementa cadastro, edição, exclusão e busca por nome parcial, e-mail ou telefone, sem distinguir maiúsculas/minúsculas. `PersistenceRepositoryTest` cobre busca, operações e dados inválidos. A tela `CustomerController` coordena formulário, pesquisa e tabela; seus cliques não são cobertos por teste de UI. |
-| **Ambientes** | **Implementado e testado no serviço/persistência; interface sem cobertura automatizada.** `EnvironmentService` associa ambientes a clientes, aceita tipos de catálogo e tipos personalizados, elimina duplicados e impede remover ambientes com registros vinculados. Testes cobrem esses casos e a integridade de relações. |
+| **Clientes** | **Implementado e testado no serviço/persistência; interface sem cobertura automatizada.** `CustomerService` implementa cadastro, edição, exclusão e busca por nome parcial, e-mail ou telefone, sem distinguir maiúsculas/minúsculas. No SQLite migrado, a FK bloqueia exclusão de clientes referenciados e a violação reconhecida é traduzida pelo serviço. `PersistenceRepositoryTest` cobre busca, operações e dados inválidos. A tela `CustomerController` coordena formulário, pesquisa e tabela; seus cliques não são cobertos por teste de UI. |
+| **Ambientes** | **Implementado e testado no serviço/persistência; interface sem cobertura automatizada.** `EnvironmentService` associa ambientes a clientes, aceita tipos de catálogo e tipos personalizados e elimina duplicados. Na sincronização, verifica referências de peças legadas, móveis e projetos antes da remoção; a exclusão individual e a sincronização também traduzem violações SQLite de FK reconhecidas. Testes cobrem esses casos e rollback. |
 | **Materiais / chapas** | **Implementado e testado no serviço/persistência; interface sem cobertura automatizada.** `MaterialService` implementa CRUD de chapas com nome, cor, espessura, dimensões e preço por chapa. Há validação e bloqueio de exclusão quando a chapa está referenciada por peça ou rascunho; `PersistenceRepositoryTest` cobre CRUD e referências. |
 | **Ferragens** | **Implementado e testado no serviço/persistência; interface sem cobertura automatizada.** `HardwareService` implementa CRUD de itens com unidade e preço unitário e protege itens usados pelo rascunho. CRUD e restrição de exclusão aparecem nos testes de persistência. |
 | **Orçamentos e cálculos** | **Cálculo implementado e testado em escopo limitado; fluxo de orçamento implementado com cobertura insuficiente de UI.** `PricingController` monta peças, seleciona projeto e insumos, mantém parâmetros e ferragens, atualiza o resumo e salva/restaura um rascunho ativo. As operações de peças de projetos e rascunho usam serviços separados. `PricingEngineTest` contém sete testes de domínio para áreas, consumo por área, desperdício, custo, margem e entradas inválidas. Não há testes automatizados que exercitem o fluxo JavaFX de edição, exclusão, resumo ou fechamento. O rascunho é único (`ACTIVE_DRAFT_ID = "active"`); não existe entidade de orçamento final/histórico de versões. |
@@ -103,16 +121,16 @@ Grupos existentes:
 
 ## 7. Decisões de produto
 
-As decisões registradas nas instruções do projeto e refletidas na arquitetura são:
+As decisões de produto e a direção arquitetural aprovada são:
 
-- Manter o produto como **aplicação desktop**, com serviços locais e persistência SQLite; não assumir backend ou serviço web.
+- Manter a experiência **desktop** e a operação individual offline; evoluir para comunicação HTTP com backend local ou central, conforme a seção 3. O backend separado e o modo compartilhado ainda não estão implementados.
 - Priorizar necessidades de **pequenas marcenarias**.
 - Favorecer simplicidade e facilidade de uso, evitando complexidade arquitetural ou funcionalidades sem necessidade confirmada.
 - Priorizar melhorias que reduzam custo, desperdício e tempo administrativo, preservando transparência sobre estimativas e limites dos cálculos.
 
 ## 8. Próximas etapas propostas
 
-Não foi encontrado roadmap oficial no repositório e a consulta de issues não retornou itens. A lista abaixo é uma recomendação baseada nas lacunas observadas, não uma afirmação de que esses itens já foram aprovados.
+A direção arquitetural da seção 3 foi aprovada; os itens abaixo são recomendações adicionais baseadas nas lacunas observadas, não compromissos de escopo já aprovados.
 
 | Prioridade | Objetivo | Motivo | Critério de aceitação |
 |---|---|---|---|
@@ -124,6 +142,6 @@ Não foi encontrado roadmap oficial no repositório e a consulta de issues não 
 
 ## 9. Histórico
 
-- **PR #1 — “feat: enhance UI components and improve layout for better user experience”** foi integrada à `main`. O commit atual é `d639fcd` (`feat: enhance UI components and improve layout for better user experience (#1)`).
+- **PR #1 — “feat: enhance UI components and improve layout for better user experience”** foi integrada à `main` no commit `d639fcd`. A referência atual deste documento está na branch indicada no início.
 - A integração alterou a navegação, o Dashboard, Clientes, Ambientes, Catálogo, Kanban e Orçamentação, incluindo FXML, CSS, controladores e mensagens localizadas.
 - A existência da PR integrada e os testes de build não significam que todos os fluxos de UI foram validados. A suíte automatizada tem cobertura concentrada em domínio, serviços/persistência e PDF; continuam pendentes os testes de interação descritos acima.
