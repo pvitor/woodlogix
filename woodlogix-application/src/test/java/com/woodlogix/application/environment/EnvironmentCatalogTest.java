@@ -79,7 +79,10 @@ class EnvironmentCatalogTest {
                 "refs:part:e3", "refs:item:e3", "refs:sales:e3",
                 "deleteAll:[e2, e3]", "rename:e1:KITCHEN", "createAll:c1:[Pantry]", "notify",
                 "byCustomer:c1"), fixture.events);
-        assertEquals(List.of("KITCHEN", "Pantry"), types(result));
+        assertEquals(List.of("KITCHEN", "Pantry"), types(result.environments()));
+        assertEquals(fixture.rows, result.environments());
+        assertTrue(result.changed());
+        assertEquals(2, result.requestedCount());
     }
 
     @Test
@@ -96,21 +99,27 @@ class EnvironmentCatalogTest {
     void synchronizationWithoutChangesReturnsExistingRowsWithoutCheckingOrNotifying() {
         var fixture = new Fixture();
         fixture.add("c1", "Kitchen");
-        var result = fixture.catalog.saveOrUpdateCustomerEnvironments("c1", List.of("Kitchen"));
-        assertEquals(List.of("Kitchen"), types(result));
+        var result = fixture.catalog.saveOrUpdateCustomerEnvironments(
+                "c1", List.of("Kitchen", " kitchen ", "KITCHEN"));
+        assertEquals(fixture.rows, result.environments());
+        assertFalse(result.changed());
+        assertEquals(1, result.requestedCount());
         assertEquals(List.of("write", "customerExists", "byCustomer:c1"), fixture.events);
     }
 
     @Test
-    void synchronizationExecutesActionOnlyWhenChangesOccur() {
+    void synchronizationReportsEmptyRequestsAndRemoval() {
         var fixture = new Fixture();
-        fixture.add("c1", "Kitchen");
-        var run = new java.util.concurrent.atomic.AtomicBoolean();
-        fixture.catalog.saveOrUpdateCustomerEnvironments("c1", List.of("Kitchen"), () -> run.set(true));
-        assertFalse(run.get(), "Action must not execute on early return");
+        var unchanged = fixture.catalog.saveOrUpdateCustomerEnvironments("c1", List.of());
+        assertEquals(List.of(), unchanged.environments());
+        assertFalse(unchanged.changed());
+        assertEquals(0, unchanged.requestedCount());
 
-        fixture.catalog.saveOrUpdateCustomerEnvironments("c1", List.of("Pantry"), () -> run.set(true));
-        assertTrue(run.get(), "Action must execute when environments change");
+        fixture.add("c1", "Kitchen");
+        var changed = fixture.catalog.saveOrUpdateCustomerEnvironments("c1", List.of());
+        assertEquals(List.of(), changed.environments());
+        assertTrue(changed.changed());
+        assertEquals(0, changed.requestedCount());
     }
 
     @Test
