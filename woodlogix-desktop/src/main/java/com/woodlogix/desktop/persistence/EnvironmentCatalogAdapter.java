@@ -11,6 +11,9 @@ import com.woodlogix.desktop.persistence.repository.FurnitureItemRepository;
 import com.woodlogix.desktop.persistence.repository.FurniturePartRepository;
 import com.woodlogix.desktop.persistence.repository.ProjectEnvironmentRepository;
 import com.woodlogix.desktop.persistence.repository.SalesProjectRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.dao.DataAccessException;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
@@ -18,6 +21,9 @@ import java.util.Optional;
 
 @Component
 public class EnvironmentCatalogAdapter implements EnvironmentCatalogPort {
+    private static final Logger LOGGER = LoggerFactory.getLogger(EnvironmentCatalogAdapter.class);
+    private static final String HAS_RELATED_RECORDS = "error.environment-has-related-records";
+
     private final CustomerRepository customers;
     private final ProjectEnvironmentRepository environments;
     private final FurnitureItemRepository furnitureItems;
@@ -111,8 +117,16 @@ public class EnvironmentCatalogAdapter implements EnvironmentCatalogPort {
 
     @Override
     public void deleteAllAndFlush(List<String> environmentIds) {
-        environments.deleteAll(environments.findAllById(environmentIds));
-        environments.flush();
+        try {
+            environments.deleteAll(environments.findAllById(environmentIds));
+            environments.flush();
+        } catch (DataAccessException exception) {
+            if (!SqliteIntegrityErrors.isForeignKeyViolation(exception)) {
+                throw exception;
+            }
+            LOGGER.warn("Bulk environment replacement rejected by related records", exception);
+            throw new IllegalStateException(HAS_RELATED_RECORDS, exception);
+        }
     }
 
     private CustomerEntity customer(String customerId) {

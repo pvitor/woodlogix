@@ -142,6 +142,38 @@ class EnvironmentCatalogIntegrationTest {
     }
 
     @Test
+    void synchronizationLogsDistinctRequestedCountAndSuppressesLogOnEarlyReturn() {
+        var logger = (ch.qos.logback.classic.Logger) org.slf4j.LoggerFactory.getLogger(EnvironmentService.class);
+        var originalLevel = logger.getLevel();
+        logger.setLevel(ch.qos.logback.classic.Level.INFO);
+        var appender = new ch.qos.logback.core.read.ListAppender<ch.qos.logback.classic.spi.ILoggingEvent>();
+        appender.start();
+        logger.addAppender(appender);
+        try {
+            service.saveOrUpdateCustomerEnvironments(customerId, List.of("Kitchen", "Bedroom"));
+            assertTrue(appender.list.stream()
+                    .map(ch.qos.logback.classic.spi.ILoggingEvent::getFormattedMessage)
+                    .anyMatch("Customer environments synchronized: 2"::equals));
+            appender.list.clear();
+
+            // Early return: no changes
+            service.saveOrUpdateCustomerEnvironments(customerId, List.of("Kitchen", "Bedroom"));
+            assertTrue(appender.list.stream()
+                    .map(ch.qos.logback.classic.spi.ILoggingEvent::getFormattedMessage)
+                    .noneMatch(msg -> msg.startsWith("Customer environments synchronized")));
+
+            // Sync with duplicates in requested types: "kitchen", "  KITCHEN  ", "Pantry" -> 2 distinct types requested
+            service.saveOrUpdateCustomerEnvironments(customerId, List.of("kitchen", "  KITCHEN  ", "Pantry"));
+            assertTrue(appender.list.stream()
+                    .map(ch.qos.logback.classic.spi.ILoggingEvent::getFormattedMessage)
+                    .anyMatch("Customer environments synchronized: 2"::equals));
+        } finally {
+            logger.setLevel(originalLevel);
+            logger.detachAppender(appender);
+        }
+    }
+
+    @Test
     void validatesFacadeAndMissingRecordsWithoutPersistingOrNotifying() {
         assertThrows(ConstraintViolationException.class,
                 () -> service.create(new EnvironmentData(" ", "Kitchen")));

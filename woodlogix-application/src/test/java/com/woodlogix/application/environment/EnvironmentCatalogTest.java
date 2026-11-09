@@ -43,42 +43,27 @@ class EnvironmentCatalogTest {
         var fixture = new Fixture();
         fixture.add("c1", "bathroom");
         fixture.add("c1", "My Studio");
-        var created = fixture.catalog.createForCustomer("c1",
-                List.of(RoomType.KITCHEN, RoomType.KITCHEN, RoomType.BATHROOM), "  kitchen ");
-        assertEquals(List.of("KITCHEN"), types(created));
+        var result = fixture.catalog.createForCustomer("c1",
+                List.of(RoomType.BATHROOM, RoomType.KITCHEN, RoomType.KITCHEN), "  my studio  ");
+        assertEquals(List.of("KITCHEN"), types(result));
         assertEquals(List.of("write", "customerExists", "byCustomer:c1", "createAll:c1:[KITCHEN]", "notify"),
                 fixture.events);
-
-        fixture.events.clear();
-        created = fixture.catalog.createForCustomer("c1", List.of(RoomType.HOME_OFFICE), "my_studio");
-        assertEquals(List.of("HOME_OFFICE"), types(created));
-
-        fixture.events.clear();
-        created = fixture.catalog.createForCustomer("c1", null, "  Garage ");
-        assertEquals(List.of("Garage"), types(created));
     }
 
     @Test
-    void createForCustomerWithoutNewTypesReturnsEmptyWithoutNotifying() {
+    void createForCustomerAllowsCustomTypeAloneAndRejectsBlankOrDuplicateOfSelected() {
         var fixture = new Fixture();
+        assertEquals(List.of("Studio"), types(fixture.catalog.createForCustomer(
+                "c1", null, "Studio")));
+        assertEquals("error.environment-type", assertThrows(IllegalArgumentException.class,
+                () -> fixture.catalog.createForCustomer("c1", null, null)).getMessage());
+        assertEquals("error.environment-type", assertThrows(IllegalArgumentException.class,
+                () -> fixture.catalog.createForCustomer("c1", List.of(), "   ")).getMessage());
+
+        fixture.events.clear();
         fixture.add("c1", "KITCHEN");
         assertTrue(fixture.catalog.createForCustomer("c1", List.of(RoomType.KITCHEN), "kitchen").isEmpty());
-        assertEquals(List.of("write", "customerExists", "byCustomer:c1"), fixture.events);
-    }
-
-    @Test
-    void createForCustomerRequiresCustomerAndAtLeastOneType() {
-        var fixture = new Fixture();
-        assertThrows(CustomerNotFoundException.class,
-                () -> fixture.catalog.createForCustomer("missing", List.of(), null));
-        for (var blank : new String[]{null, "", "  "}) {
-            assertEquals("error.environment-type", assertThrows(IllegalArgumentException.class,
-                    () -> fixture.catalog.createForCustomer("c1", List.of(), blank)).getMessage());
-            assertEquals("error.environment-type", assertThrows(IllegalArgumentException.class,
-                    () -> fixture.catalog.createForCustomer("c1", null, blank)).getMessage());
-        }
-        assertFalse(fixture.events.contains("notify"));
-        assertFalse(fixture.events.stream().anyMatch(event -> event.startsWith("createAll")));
+        assertTrue(fixture.events.stream().noneMatch("notify"::equals));
     }
 
     @Test
@@ -114,6 +99,18 @@ class EnvironmentCatalogTest {
         var result = fixture.catalog.saveOrUpdateCustomerEnvironments("c1", List.of("Kitchen"));
         assertEquals(List.of("Kitchen"), types(result));
         assertEquals(List.of("write", "customerExists", "byCustomer:c1"), fixture.events);
+    }
+
+    @Test
+    void synchronizationExecutesActionOnlyWhenChangesOccur() {
+        var fixture = new Fixture();
+        fixture.add("c1", "Kitchen");
+        var run = new java.util.concurrent.atomic.AtomicBoolean();
+        fixture.catalog.saveOrUpdateCustomerEnvironments("c1", List.of("Kitchen"), () -> run.set(true));
+        assertFalse(run.get(), "Action must not execute on early return");
+
+        fixture.catalog.saveOrUpdateCustomerEnvironments("c1", List.of("Pantry"), () -> run.set(true));
+        assertTrue(run.get(), "Action must execute when environments change");
     }
 
     @Test

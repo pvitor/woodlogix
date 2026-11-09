@@ -76,11 +76,16 @@ public class EnvironmentService {
             @NotBlank String customerId,
             @NotNull List<@NotBlank String> roomTypes
     ) {
+        int requestedCount = (int) roomTypes.stream()
+                .map(EnvironmentCatalog::normalizeRoomType)
+                .distinct()
+                .count();
         try {
-            List<EnvironmentRow> synchronizedRows =
-                    catalog.saveOrUpdateCustomerEnvironments(customerId, roomTypes);
-            LOGGER.info("Customer environments synchronized: {}", synchronizedRows.size());
-            return synchronizedRows;
+            return catalog.saveOrUpdateCustomerEnvironments(
+                    customerId,
+                    roomTypes,
+                    () -> LOGGER.info("Customer environments synchronized: {}", requestedCount)
+            );
         } catch (RuntimeException exception) {
             throw translateReplacementFailure(exception);
         }
@@ -162,13 +167,10 @@ public class EnvironmentService {
         }
         if (exception instanceof IllegalStateException
                 && HAS_RELATED_RECORDS.equals(exception.getMessage())) {
-            LOGGER.warn("Customer environment replacement rejected because rooms have linked records");
+            if (exception.getCause() == null) {
+                LOGGER.warn("Customer environment replacement rejected because rooms have linked records");
+            }
             return exception;
-        }
-        if (exception instanceof DataAccessException
-                && SqliteIntegrityErrors.isForeignKeyViolation(exception)) {
-            LOGGER.warn("Bulk environment replacement rejected by related records", exception);
-            return new IllegalStateException(HAS_RELATED_RECORDS, exception);
         }
         return exception;
     }

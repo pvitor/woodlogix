@@ -309,8 +309,7 @@ class DeletionAndPipelineCharacterizationTest {
                     .setParameter("id", free.getId()).getSingleResult();
             assertEquals(0L, count);
             observedWrite.set(true);
-            repository.deleteById(linked.getId());
-            repository.flush();
+            realPort.deleteAllAndFlush(List.of(linked.getId()));
             return null;
         }).when(intercepted).deleteAllAndFlush(any());
         ReflectionTestUtils.setField(catalog, "environments", intercepted);
@@ -506,7 +505,7 @@ class DeletionAndPipelineCharacterizationTest {
             if (event instanceof PayloadApplicationEvent<?> payload
                     && eventType.isInstance(payload.getPayload())) {
                 var entityManager = EntityManagerFactoryUtils.getTransactionalEntityManager(
-                        context.getBean(EntityManagerFactory.class));
+                    context.getBean(EntityManagerFactory.class));
                 assertTrue(TransactionSynchronizationManager.isActualTransactionActive());
                 assertTrue(entityManager != null && entityManager.isJoinedToTransaction());
                 entityManager.unwrap(Session.class).doWork(connection -> {

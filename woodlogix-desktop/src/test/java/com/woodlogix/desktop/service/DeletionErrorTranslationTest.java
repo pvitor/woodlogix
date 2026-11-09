@@ -25,10 +25,12 @@ import java.util.List;
 import java.util.Optional;
 import java.util.function.Supplier;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -99,5 +101,41 @@ class DeletionErrorTranslationTest {
 
         assertSame(failure, assertThrows(DataIntegrityViolationException.class,
                 () -> service.saveOrUpdateCustomerEnvironments("customer", List.of())));
+    }
+
+    @Test
+    void foreignKeyViolationInBulkDeletionIsTranslatedToIllegalStateException() {
+        var customers = mock(CustomerRepository.class);
+        var environments = mock(ProjectEnvironmentRepository.class);
+        var service = environmentService(customers, environments, mock(ApplicationEventPublisher.class));
+        var customer = new CustomerEntity("customer", "Customer", null, null, null);
+        var environment = new ProjectEnvironmentEntity("environment", customer, "Kitchen");
+        when(customers.findById("customer")).thenReturn(Optional.of(customer));
+        when(environments.findAllByCustomerId("customer")).thenReturn(List.of(environment));
+        when(environments.findAllById(List.of("environment"))).thenReturn(List.of(environment));
+        var failure = new DataIntegrityViolationException("foreign key", new SQLiteException(
+                "foreign key", SQLiteErrorCode.SQLITE_CONSTRAINT_FOREIGNKEY));
+        doThrow(failure).when(environments).flush();
+
+        var thrown = assertThrows(IllegalStateException.class,
+                () -> service.saveOrUpdateCustomerEnvironments("customer", List.of()));
+        assertEquals("error.environment-has-related-records", thrown.getMessage());
+        assertSame(failure, thrown.getCause());
+    }
+
+    @Test
+    void foreignKeyViolationDuringCreationPropagatesWithoutTranslation() {
+        var customers = mock(CustomerRepository.class);
+        var environments = mock(ProjectEnvironmentRepository.class);
+        var service = environmentService(customers, environments, mock(ApplicationEventPublisher.class));
+        var customer = new CustomerEntity("customer", "Customer", null, null, null);
+        when(customers.findById("customer")).thenReturn(Optional.of(customer));
+        when(environments.findAllByCustomerId("customer")).thenReturn(List.of());
+        var failure = new DataIntegrityViolationException("foreign key", new SQLiteException(
+                "foreign key", SQLiteErrorCode.SQLITE_CONSTRAINT_FOREIGNKEY));
+        when(environments.saveAllAndFlush(any())).thenThrow(failure);
+
+        assertSame(failure, assertThrows(DataIntegrityViolationException.class,
+                () -> service.saveOrUpdateCustomerEnvironments("customer", List.of("Kitchen"))));
     }
 }

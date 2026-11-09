@@ -93,11 +93,17 @@ public class EnvironmentCatalog {
 
     public List<EnvironmentRow> saveOrUpdateCustomerEnvironments(String customerId,
                                                                  List<String> roomTypes) {
-        return transactions.executeWithResult(() -> synchronize(customerId, roomTypes));
+        return saveOrUpdateCustomerEnvironments(customerId, roomTypes, () -> {});
+    }
+
+    public List<EnvironmentRow> saveOrUpdateCustomerEnvironments(String customerId,
+                                                                 List<String> roomTypes,
+                                                                 Runnable onSynchronized) {
+        return transactions.executeWithResult(() -> synchronize(customerId, roomTypes, onSynchronized));
     }
 
     public void deleteAllByCustomer(String customerId) {
-        transactions.execute(() -> synchronize(customerId, List.of()));
+        transactions.execute(() -> synchronize(customerId, List.of(), () -> {}));
     }
 
     public EnvironmentRow update(String environmentId, String customerId, String type) {
@@ -123,7 +129,8 @@ public class EnvironmentCatalog {
         });
     }
 
-    private List<EnvironmentRow> synchronize(String customerId, List<String> roomTypes) {
+    private List<EnvironmentRow> synchronize(String customerId, List<String> roomTypes,
+                                             Runnable onSynchronized) {
         requireCustomer(customerId);
 
         Map<String, String> requestedTypes = new LinkedHashMap<>();
@@ -180,6 +187,9 @@ public class EnvironmentCatalog {
         }
 
         notifier.environmentChanged();
+        if (onSynchronized != null) {
+            onSynchronized.run();
+        }
         return environments.findByCustomer(customerId);
     }
 
@@ -198,7 +208,7 @@ public class EnvironmentCatalog {
         return new ArrayList<>(uniqueRows.values());
     }
 
-    private static String normalizeRoomType(String roomType) {
+    public static String normalizeRoomType(String roomType) {
         return roomType.trim()
                 .replaceAll("[\\s_-]+", "")
                 .toLowerCase(Locale.ROOT);
