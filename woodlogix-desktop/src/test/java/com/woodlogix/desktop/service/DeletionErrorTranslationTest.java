@@ -47,8 +47,11 @@ class DeletionErrorTranslationTest {
         var adapter = new EnvironmentCatalogAdapter(customers, environments,
                 mock(FurnitureItemRepository.class), mock(FurniturePartRepository.class),
                 mock(SalesProjectRepository.class));
+        var customerCatalog = new CustomerCatalog(new CustomerCatalogAdapter(customers),
+                new CustomerChangeNotifierAdapter(events), new DirectTransactions());
         return new EnvironmentService(new EnvironmentCatalog(adapter,
-                new EnvironmentChangeNotifierAdapter(events), new DirectTransactions()), customers);
+                new EnvironmentChangeNotifierAdapter(events), new DirectTransactions()),
+                customerCatalog);
     }
 
     @Test

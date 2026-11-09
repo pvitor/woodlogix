@@ -1,5 +1,6 @@
 package com.woodlogix.desktop.service;
 
+import com.woodlogix.application.customer.CustomerCatalog;
 import com.woodlogix.application.customer.CustomerNotFoundException;
 import com.woodlogix.application.customer.CustomerRow;
 import com.woodlogix.application.environment.EnvironmentCatalog;
@@ -8,7 +9,6 @@ import com.woodlogix.application.environment.EnvironmentRow;
 import com.woodlogix.application.environment.EnvironmentSyncResult;
 import com.woodlogix.core.enums.RoomType;
 import com.woodlogix.desktop.persistence.SqliteIntegrityErrors;
-import com.woodlogix.desktop.persistence.repository.CustomerRepository;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
@@ -31,12 +31,12 @@ public class EnvironmentService {
     private static final String HAS_RELATED_RECORDS = "error.environment-has-related-records";
 
     private final EnvironmentCatalog catalog;
-    private final CustomerRepository customerRepository;
+    private final CustomerCatalog customerCatalog;
 
-    public EnvironmentService(EnvironmentCatalog catalog, CustomerRepository customerRepository) {
+    public EnvironmentService(EnvironmentCatalog catalog, CustomerCatalog customerCatalog) {
         this.catalog = Objects.requireNonNull(catalog);
-        this.customerRepository = Objects.requireNonNull(
-                customerRepository, "customerRepository must not be null"
+        this.customerCatalog = Objects.requireNonNull(
+                customerCatalog, "customerCatalog must not be null"
         );
     }
 
@@ -125,21 +125,12 @@ public class EnvironmentService {
 
     @Transactional(readOnly = true)
     public List<CustomerRow> findCustomers() {
-        return customerRepository.findAll().stream()
-                .map(customer -> new CustomerRow(customer.getId(), customer.getFullName(),
-                        customer.getPhone(), customer.getEmail(), customer.getAddress()))
-                .toList();
+        return customerCatalog.findAll();
     }
 
     @Transactional(readOnly = true)
     public List<CustomerRow> findCustomers(String name) {
-        if (name == null || name.isBlank()) {
-            return findCustomers();
-        }
-        return customerRepository.findByFullNameContainingIgnoreCase(name.trim()).stream()
-                .map(customer -> new CustomerRow(customer.getId(), customer.getFullName(),
-                        customer.getPhone(), customer.getEmail(), customer.getAddress()))
-                .toList();
+        return customerCatalog.findByName(name);
     }
 
     private List<EnvironmentRow> createForCustomerInternal(
