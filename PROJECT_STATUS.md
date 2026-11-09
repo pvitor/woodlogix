@@ -24,6 +24,7 @@ O problema que pretende resolver é a dispersão de informações operacionais e
 | SQLite | Banco de dados local, configurável. Driver `sqlite-jdbc` `3.42.0.0`. |
 | Flyway | Migração inicial versionada do schema SQLite; versão `11.7.2` gerenciada pelo Spring Boot. |
 | Apache PDFBox | Geração e leitura de propostas PDF; versão `3.0.5`. |
+| Jackson | Serialização dos DTOs de transporte; gerenciado pelo BOM Spring Boot no Server e também no Desktop. |
 | JUnit 5, Mockito e Spring Boot Test | Testes unitários e de integração existentes. |
 | Lombok | Redução pontual de código repetitivo. |
 
@@ -35,8 +36,9 @@ As versões estão declaradas no `pom.xml` raiz e nos POMs dos módulos.
 
 - **`woodlogix-core`** contém modelos de domínio, enums e cálculos (`PricingEngine`, `EdgeBandingCalculator`). Não depende de Spring, JavaFX ou JPA.
 - **`woodlogix-application`** contém os casos de uso dos catálogos de ferragens, materiais e fitas de borda, do cadastro de clientes, do catálogo de ambientes, do pipeline de vendas e do CRUD de peças de projeto, com portas de persistência e transação, sem dependências de Spring, JPA, Jakarta ou JavaFX em produção. Os adaptadores JPA permanecem no Desktop.
-- **`woodlogix-server`** existe como módulo estrutural Spring Boot Web, dependente de Application e Core, sem dependência de Desktop. Contém somente a classe de inicialização; seu POM configura `spring-boot-starter-web` e o plugin Spring Boot `3.5.16` para reempacotamento executável. Ainda não possui endpoints, banco de dados, migrations ou adapters.
-- **`woodlogix-desktop`** contém a aplicação JavaFX, controladores e FXML, serviços de casos de uso, entidades JPA, repositórios Spring Data, configuração SQLite e integração PDF.
+- **`woodlogix-server`** é um módulo Spring Boot Web dependente de Application e Core, sem dependência de Desktop. Contém a classe de inicialização e records DTO em `com.woodlogix.server.api.dto`; seu POM configura `spring-boot-starter-web` e o plugin Spring Boot `3.5.16` para reempacotamento executável. Ainda não possui endpoints, banco de dados, migrations ou adapters.
+- **`woodlogix-desktop`** contém a aplicação JavaFX, controladores e FXML, serviços de casos de uso, entidades JPA, repositórios Spring Data, configuração SQLite, integração PDF e cópias dos DTOs de transporte em `com.woodlogix.desktop.api.dto`. Jackson Databind é gerenciado pelo BOM Spring Boot; Desktop não depende de Server.
+- **Contratos de transporte:** os DTOs estão duplicados nos módulos Server e Desktop, sem módulo compartilhado. JSON de referência e testes de serialização/desserialização nos dois módulos verificam equivalência estrutural, enums por nome, campos opcionais nulos, listas vazias e `BigDecimal`. O teste do Desktop também verifica tolerância a campos adicionais. Não há mapeadores, cliente HTTP ou endpoints nesta etapa.
 - **Serviços** coordenam operações como CRUD, validações, relações e transações. **Repositórios** estendem interfaces Spring Data JPA; não há DAOs JDBC manuais no fluxo atual.
 - **Integração JavaFX/Spring:** `WoodLogixDesktopLauncher` inicia `AppLauncher`; o contexto Spring é aberto no ciclo de vida JavaFX e encerrado em `stop()`. O `FXMLLoader` obtém controladores pelo contexto.
 - **Trabalho assíncrono:** operações de interface que consultam ou alteram dados usam `UiTaskRunner`, com `Task` em executor próprio e atualização da interface nos callbacks JavaFX.
@@ -92,6 +94,14 @@ O consumo de chapas é **estimativa por área**, não otimização de corte: o c
 Executado para este registro:
 
 ```text
+mvn -o -pl woodlogix-server,woodlogix-desktop -am '-Dtest=TransportDtoJsonTest' '-Dsurefire.failIfNoSpecifiedTests=false' test
+BUILD SUCCESS
+9 testes de contratos JSON (Server 4, Desktop 5): 0 falhas, 0 erros, 0 ignorados
+
+mvn -o test
+BUILD SUCCESS
+192 testes (core 7, application 59, server 5, desktop 121): 0 falhas, 0 erros, 0 ignorados
+
 mvn -o -pl woodlogix-server -am '-Dtest=WoodLogixServerApplicationTest' '-Dsurefire.failIfNoSpecifiedTests=false' test
 BUILD SUCCESS
 1 teste: contexto Spring Boot iniciado com Tomcat em porta aleatória, sem banco de dados
@@ -146,6 +156,7 @@ Grupos existentes:
 - `woodlogix-desktop/.../ProjectWorkpieceIntegrationTest.java` — 5 testes em SQLite temporário migrado com Flyway: criação/atualização/ordenação e mapeamento de rows, valores atuais dos catálogos, validação e IDs inexistentes, rollback após flush e tradução da falha de integridade na exclusão sem conversão de outras falhas.
 - `woodlogix-desktop/.../ProposalPdfServiceTest.java` — 4 testes de conteúdo/exportação PDF e mensagens/currency em inglês e espanhol.
 - `woodlogix-server/.../WoodLogixServerApplicationTest.java` — inicia o contexto com `RANDOM_PORT` e confirma que um servidor HTTP embarcado recebeu uma porta, sem configurar ou exigir banco de dados.
+- `woodlogix-server/.../TransportDtoJsonTest.java` e `woodlogix-desktop/.../TransportDtoJsonTest.java` — validam serialização/desserialização dos contratos DTO contra fixtures JSON equivalentes, incluindo valores decimais, enums, nulos e coleções; o Desktop verifica também campos extras.
 - `woodlogix-desktop/.../ConfigLoaderTest.java` — 1 teste de configuração externa.
 - `woodlogix-desktop/.../DeletionAndPipelineCharacterizationTest.java` — 16 testes de caracterização em SQLite temporário: exclusões com FKs reais, associações do pipeline, ordenação por etapa/data, movimentação sem alterar outros campos e rollback de criação após flush.
 - `woodlogix-desktop/.../EnvironmentAndDraftCharacterizationTest.java` — caracteriza sincronização de ambientes e rascunhos; cobre referências ausentes, validações, projeto opcional, fita ausente/obrigatória, substituição de filhos, listas vazias e rollback após flush real com SQLite temporário migrado via Flyway.

@@ -1,0 +1,198 @@
+{
+  "customerRequest": {
+    "fullName": "Ada Lovelace",
+    "phone": null,
+    "email": null,
+    "address": null
+  },
+  "customerResponse": {
+    "id": "customer-1",
+    "fullName": "Ada Lovelace",
+    "phone": null,
+    "email": null,
+    "address": null
+  },
+  "environmentAddRequest": {
+    "roomTypes": ["KITCHEN"],
+    "customRoomType": null
+  },
+  "environmentReplaceRequest": {
+    "types": []
+  },
+  "environmentResponse": {
+    "id": "environment-1",
+    "customerId": "customer-1",
+    "customerName": "Ada Lovelace",
+    "type": "KITCHEN"
+  },
+  "materialRequest": {
+    "name": "MDF",
+    "color": "White",
+    "thicknessMm": 18.00,
+    "lengthMm": 2750.00,
+    "widthMm": 1840.00,
+    "pricePerSheet": 120.50
+  },
+  "materialResponse": {
+    "id": "material-1",
+    "name": "MDF",
+    "color": "White",
+    "thicknessMm": 18.00,
+    "lengthMm": 2750.00,
+    "widthMm": 1840.00,
+    "pricePerSheet": 120.50
+  },
+  "edgeBandingRequest": {
+    "name": "PVC",
+    "widthMm": 22.00,
+    "pricePerMeter": 1.25
+  },
+  "edgeBandingResponse": {
+    "id": "edge-1",
+    "name": "PVC",
+    "widthMm": 22.00,
+    "pricePerMeter": 1.25
+  },
+  "hardwareRequest": {
+    "name": "Hinge",
+    "unit": "PAIR",
+    "unitPrice": 5.75
+  },
+  "hardwareResponse": {
+    "id": "hardware-1",
+    "name": "Hinge",
+    "unit": "PAIR",
+    "unitPrice": 5.75
+  },
+  "salesProjectRequest": {
+    "customerId": "customer-1",
+    "environmentId": null,
+    "projectName": "Kitchen",
+    "totalValue": 12500.00
+  },
+  "changeSalesStageRequest": {
+    "stage": "QUOTE_SENT"
+  },
+  "salesProjectResponse": {
+    "id": "project-1",
+    "projectName": "Kitchen",
+    "customerName": "Ada Lovelace",
+    "customerEmail": null,
+    "customerPhone": null,
+    "environmentName": "",
+    "totalValue": 12500.00,
+    "stage": "CONTACT"
+  },
+  "pipelineResponse": {
+    "stages": [
+      {
+        "stage": "CONTACT",
+        "projects": [
+          {
+            "id": "project-1",
+            "projectName": "Kitchen",
+            "customerName": "Ada Lovelace",
+            "customerEmail": null,
+            "customerPhone": null,
+            "environmentName": "",
+            "totalValue": 12500.00,
+            "stage": "CONTACT"
+          }
+        ]
+      },
+      { "stage": "MEASUREMENT_SCHEDULED", "projects": [] },
+      { "stage": "QUOTE_SENT", "projects": [] },
+      { "stage": "NEGOTIATION", "projects": [] },
+      { "stage": "CLOSED", "projects": [] }
+    ]
+  },
+  "projectWorkpieceRequest": {
+    "projectId": "project-1",
+    "name": "Counter",
+    "lengthMm": 600.00,
+    "widthMm": 400.00,
+    "quantity": 2,
+    "materialId": "material-1",
+    "edgeBandingId": null,
+    "edgeTop": true,
+    "edgeBottom": false,
+    "edgeLeft": false,
+    "edgeRight": false
+  },
+  "projectWorkpieceResponse": {
+    "id": "workpiece-1",
+    "projectId": "project-1",
+    "name": "Counter",
+    "lengthMm": 600.00,
+    "widthMm": 400.00,
+    "quantity": 2,
+    "material": {
+      "id": "material-1",
+      "name": "MDF",
+      "color": "White",
+      "thicknessMm": 18.00,
+      "lengthMm": 2750.00,
+      "widthMm": 1840.00,
+      "pricePerSheet": 120.50
+    },
+    "edgeBanding": null,
+    "edgeTop": true,
+    "edgeBottom": false,
+    "edgeLeft": false,
+    "edgeRight": false
+  },
+  "estimateDraft": {
+    "projectId": null,
+    "wasteFactor": 15.000,
+    "estimatedHours": 0.00,
+    "hourlyRate": 0.00,
+    "machineRate": 0.00,
+    "profitMargin": 30.000,
+    "workpieces": [
+      {
+        "projectWorkpieceId": null,
+        "name": "Standalone counter",
+        "lengthMm": 600.00,
+        "widthMm": 400.00,
+        "quantity": 1,
+        "materialId": "material-1",
+        "edgeBandingId": null,
+        "edgeTop": false,
+        "edgeBottom": false,
+        "edgeLeft": false,
+        "edgeRight": false
+      }
+    ],
+    "hardwares": [
+      {
+        "hardwareId": "hardware-1",
+        "quantity": 2
+      }
+    ]
+  },
+  "emptyEstimateDraft": {
+    "projectId": null,
+    "wasteFactor": 15.000,
+    "estimatedHours": 0.00,
+    "hourlyRate": 0.00,
+    "machineRate": 0.00,
+    "profitMargin": 30.000,
+    "workpieces": [],
+    "hardwares": []
+  },
+  "activeDraftResponse": {
+    "draft": null
+  },
+  "apiErrorResponse": {
+    "code": "VALIDATION_ERROR",
+    "messageKey": "error.operation-failed",
+    "fieldErrors": [
+      {
+        "field": "fullName",
+        "code": "NOT_BLANK",
+        "messageKey": "error.customer-name"
+      }
+    ],
+    "diagnosticId": "diagnostic-1"
+  }
+}
