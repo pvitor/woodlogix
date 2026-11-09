@@ -1,6 +1,7 @@
 package com.woodlogix.desktop.service;
 
 import com.woodlogix.application.customer.CustomerRow;
+import com.woodlogix.application.environment.EnvironmentRow;
 import com.woodlogix.core.enums.SalesStage;
 import com.woodlogix.desktop.persistence.entity.CustomerEntity;
 import com.woodlogix.desktop.persistence.entity.ProjectEnvironmentEntity;

@@ -1,9 +1,12 @@
 package com.woodlogix.desktop.service;
 
 import com.woodlogix.application.customer.CustomerCatalog;
+import com.woodlogix.application.environment.EnvironmentCatalog;
 import com.woodlogix.application.transaction.TransactionPort;
 import com.woodlogix.desktop.persistence.CustomerCatalogAdapter;
 import com.woodlogix.desktop.persistence.CustomerChangeNotifierAdapter;
+import com.woodlogix.desktop.persistence.EnvironmentCatalogAdapter;
+import com.woodlogix.desktop.persistence.EnvironmentChangeNotifierAdapter;
 import com.woodlogix.desktop.persistence.SqliteIntegrityErrors;
 import com.woodlogix.desktop.persistence.entity.CustomerEntity;
 import com.woodlogix.desktop.persistence.entity.ProjectEnvironmentEntity;
@@ -37,6 +40,15 @@ class DeletionErrorTranslationTest {
         public <T> T executeReadOnly(Supplier<T> operation) { return operation.get(); }
     }
 
+    private static EnvironmentService environmentService(CustomerRepository customers,
+            ProjectEnvironmentRepository environments, ApplicationEventPublisher events) {
+        var adapter = new EnvironmentCatalogAdapter(customers, environments,
+                mock(FurnitureItemRepository.class), mock(FurniturePartRepository.class),
+                mock(SalesProjectRepository.class));
+        return new EnvironmentService(new EnvironmentCatalog(adapter,
+                new EnvironmentChangeNotifierAdapter(events), new DirectTransactions()), customers);
+    }
+
     @Test
     void recognizesOnlyTheExtendedForeignKeyCodeInTheCauseChain() {
         assertTrue(SqliteIntegrityErrors.isForeignKeyViolation(new RuntimeException(
@@ -58,9 +70,7 @@ class DeletionErrorTranslationTest {
         var customers = new CustomerService(new CustomerCatalog(
                 new CustomerCatalogAdapter(customerRepository),
                 new CustomerChangeNotifierAdapter(events), new DirectTransactions()));
-        var environments = new EnvironmentService(customerRepository, environmentRepository,
-                mock(FurnitureItemRepository.class), mock(FurniturePartRepository.class),
-                mock(SalesProjectRepository.class), events);
+        var environments = environmentService(customerRepository, environmentRepository, events);
         var failure = new DataIntegrityViolationException("unrelated", new SQLiteException(
                 "unique", SQLiteErrorCode.SQLITE_CONSTRAINT_UNIQUE));
         when(customerRepository.existsById("customer")).thenReturn(true);
@@ -78,9 +88,7 @@ class DeletionErrorTranslationTest {
     void unrelatedIntegrityErrorsRemainUnchangedInBulkDeletion() {
         var customers = mock(CustomerRepository.class);
         var environments = mock(ProjectEnvironmentRepository.class);
-        var service = new EnvironmentService(customers, environments,
-                mock(FurnitureItemRepository.class), mock(FurniturePartRepository.class),
-                mock(SalesProjectRepository.class), mock(ApplicationEventPublisher.class));
+        var service = environmentService(customers, environments, mock(ApplicationEventPublisher.class));
         var customer = new CustomerEntity("customer", "Customer", null, null, null);
         var environment = new ProjectEnvironmentEntity("environment", customer, "Kitchen");
         when(customers.findById("customer")).thenReturn(Optional.of(customer));

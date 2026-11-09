@@ -9,7 +9,9 @@ import com.woodlogix.desktop.service.CustomerData;
 import com.woodlogix.desktop.service.CustomerService;
 import com.woodlogix.desktop.service.EdgeBandingData;
 import com.woodlogix.desktop.service.EdgeBandingService;
-import com.woodlogix.desktop.service.EnvironmentRow;
+import com.woodlogix.application.environment.EnvironmentRow;
+import com.woodlogix.application.environment.EnvironmentCatalog;
+import com.woodlogix.application.environment.EnvironmentCatalogPort;
 import com.woodlogix.desktop.service.EnvironmentService;
 import com.woodlogix.desktop.service.EstimateDraftData;
 import com.woodlogix.desktop.service.EstimateDraftService;
@@ -138,14 +140,13 @@ class EnvironmentAndDraftCharacterizationTest {
         assertEquals(2, physicalBefore.size());
         String removedId = original.stream().filter(row -> row.type().equals("Bedroom"))
                 .findFirst().orElseThrow().id();
-        var realRepository = context.getBean(ProjectEnvironmentRepository.class);
-        var intercepted = mock(ProjectEnvironmentRepository.class, delegatesTo(realRepository));
-        var target = AopTestUtils.<EnvironmentService>getUltimateTargetObject(service);
+        var catalog = context.getBean(EnvironmentCatalog.class);
+        var realPort = context.getBean(EnvironmentCatalogPort.class);
+        var intercepted = mock(EnvironmentCatalogPort.class, delegatesTo(realPort));
         var observedWrite = new AtomicBoolean();
 
         doAnswer(invocation -> {
-            Iterable<ProjectEnvironmentEntity> entities = invocation.getArgument(0);
-            realRepository.saveAllAndFlush(entities);
+            realPort.createAllAndFlush(invocation.getArgument(0), invocation.getArgument(1));
             assertEquals(0L, transactionalCount(
                     "SELECT COUNT(e) FROM ProjectEnvironmentEntity e WHERE e.id = ?1", removedId));
             assertEquals(1L, transactionalCount(
@@ -153,16 +154,16 @@ class EnvironmentAndDraftCharacterizationTest {
                     customer.id(), "Pantry"));
             observedWrite.set(true);
             throw new IllegalStateException("injected environment failure");
-        }).when(intercepted).saveAllAndFlush(any());
+        }).when(intercepted).createAllAndFlush(any(), any());
 
-        ReflectionTestUtils.setField(target, "environmentRepository", intercepted);
+        ReflectionTestUtils.setField(catalog, "environments", intercepted);
         try {
             var failure = assertThrows(IllegalStateException.class, () ->
                     service.saveOrUpdateCustomerEnvironments(
                             customer.id(), List.of("KITCHEN", "Pantry")));
             assertEquals("injected environment failure", failure.getMessage());
         } finally {
-            ReflectionTestUtils.setField(target, "environmentRepository", realRepository);
+            ReflectionTestUtils.setField(catalog, "environments", realPort);
         }
 
         assertTrue(observedWrite.get());

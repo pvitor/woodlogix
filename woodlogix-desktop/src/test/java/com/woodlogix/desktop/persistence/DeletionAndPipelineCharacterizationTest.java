@@ -16,6 +16,8 @@ import com.woodlogix.desktop.service.CustomerData;
 import com.woodlogix.desktop.service.CustomerService;
 import com.woodlogix.desktop.service.EdgeBandingData;
 import com.woodlogix.desktop.service.EdgeBandingService;
+import com.woodlogix.application.environment.EnvironmentCatalog;
+import com.woodlogix.application.environment.EnvironmentCatalogPort;
 import com.woodlogix.desktop.service.EnvironmentData;
 import com.woodlogix.desktop.service.EnvironmentService;
 import com.woodlogix.desktop.service.EstimateDraftData;
@@ -290,11 +292,11 @@ class DeletionAndPipelineCharacterizationTest {
         var environmentRows = rows("project_environments");
         var itemRows = rows("furniture_items");
         var service = context.getBean(EnvironmentService.class);
-        var target = AopTestUtils.<EnvironmentService>getUltimateTargetObject(service);
-        var itemLookup = mock(FurnitureItemRepository.class, delegatesTo(itemRepository));
-        var interceptedRepository = mock(ProjectEnvironmentRepository.class, delegatesTo(repository));
+        var catalog = context.getBean(EnvironmentCatalog.class);
+        var realPort = context.getBean(EnvironmentCatalogPort.class);
+        var intercepted = mock(EnvironmentCatalogPort.class, delegatesTo(realPort));
         var observedWrite = new AtomicBoolean();
-        doReturn(false).when(itemLookup).existsByEnvironmentId(linked.getId());
+        doReturn(false).when(intercepted).hasFurnitureItemReferences(linked.getId());
         doAnswer(invocation -> {
             assertTrue(TransactionSynchronizationManager.isActualTransactionActive());
             repository.deleteById(free.getId());
@@ -308,16 +310,15 @@ class DeletionAndPipelineCharacterizationTest {
             assertEquals(0L, count);
             observedWrite.set(true);
             repository.deleteById(linked.getId());
+            repository.flush();
             return null;
-        }).when(interceptedRepository).deleteAll(any(Iterable.class));
-        ReflectionTestUtils.setField(target, "furnitureItemRepository", itemLookup);
-        ReflectionTestUtils.setField(target, "environmentRepository", interceptedRepository);
+        }).when(intercepted).deleteAllAndFlush(any());
+        ReflectionTestUtils.setField(catalog, "environments", intercepted);
         try {
             assertForeignKeyFailure("error.environment-has-related-records", () -> withForeignKeys(
                     () -> service.saveOrUpdateCustomerEnvironments(customer.getId(), List.of("New"))));
         } finally {
-            ReflectionTestUtils.setField(target, "furnitureItemRepository", itemRepository);
-            ReflectionTestUtils.setField(target, "environmentRepository", repository);
+            ReflectionTestUtils.setField(catalog, "environments", realPort);
         }
         assertTrue(observedWrite.get());
         assertFalse(TransactionSynchronizationManager.isActualTransactionActive());

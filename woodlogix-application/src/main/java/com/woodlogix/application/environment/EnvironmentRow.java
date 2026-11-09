@@ -1,4 +1,4 @@
-package com.woodlogix.desktop.service;
+package com.woodlogix.application.environment;
 
 public record EnvironmentRow(String id, String customerId, String customerName, String type) {
     @Override

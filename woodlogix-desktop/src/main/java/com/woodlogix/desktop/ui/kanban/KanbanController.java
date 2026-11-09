@@ -4,7 +4,7 @@ import com.woodlogix.core.enums.SalesStage;
 import com.woodlogix.desktop.config.ConfigLoader;
 import com.woodlogix.application.customer.CustomerRow;
 import com.woodlogix.desktop.service.CustomerService;
-import com.woodlogix.desktop.service.EnvironmentRow;
+import com.woodlogix.application.environment.EnvironmentRow;
 import com.woodlogix.desktop.service.ProposalPdfService;
 import com.woodlogix.desktop.service.SalesPipelineService;
 import com.woodlogix.desktop.service.SalesProjectData;

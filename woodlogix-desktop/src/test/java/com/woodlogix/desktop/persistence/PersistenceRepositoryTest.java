@@ -30,7 +30,7 @@ import com.woodlogix.desktop.service.CustomerService;
 import com.woodlogix.desktop.service.CustomerData;
 import com.woodlogix.desktop.service.EnvironmentService;
 import com.woodlogix.desktop.service.EnvironmentData;
-import com.woodlogix.desktop.service.EnvironmentRow;
+import com.woodlogix.application.environment.EnvironmentRow;
 import com.woodlogix.desktop.service.EdgeBandingData;
 import com.woodlogix.desktop.service.EdgeBandingService;
 import com.woodlogix.desktop.service.EstimateDraftData;

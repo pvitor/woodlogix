@@ -5,6 +5,9 @@ import com.woodlogix.application.customer.CustomerCatalogPort;
 import com.woodlogix.application.customer.CustomerChangeNotifier;
 import com.woodlogix.application.edgebanding.EdgeBandingCatalog;
 import com.woodlogix.application.edgebanding.EdgeBandingCatalogPort;
+import com.woodlogix.application.environment.EnvironmentCatalog;
+import com.woodlogix.application.environment.EnvironmentCatalogPort;
+import com.woodlogix.application.environment.EnvironmentChangeNotifier;
 import com.woodlogix.application.hardware.DeleteHardware;
 import com.woodlogix.application.hardware.HardwareCatalog;
 import com.woodlogix.application.hardware.HardwareCatalogPort;
@@ -22,6 +25,13 @@ public class ApplicationConfiguration {
                                            CustomerChangeNotifier notifier,
                                            TransactionPort transactions) {
         return new CustomerCatalog(customers, notifier, transactions);
+    }
+
+    @Bean
+    public EnvironmentCatalog environmentCatalog(EnvironmentCatalogPort environments,
+                                                 EnvironmentChangeNotifier notifier,
+                                                 TransactionPort transactions) {
+        return new EnvironmentCatalog(environments, notifier, transactions);
     }
 
     @Bean
