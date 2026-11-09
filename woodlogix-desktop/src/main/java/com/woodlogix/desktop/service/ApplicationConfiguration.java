@@ -4,12 +4,19 @@ import com.woodlogix.application.hardware.DeleteHardware;
 import com.woodlogix.application.hardware.HardwareCatalog;
 import com.woodlogix.application.hardware.HardwareCatalogPort;
 import com.woodlogix.application.hardware.HardwareDeletionPort;
+import com.woodlogix.application.material.MaterialCatalog;
+import com.woodlogix.application.material.MaterialCatalogPort;
 import com.woodlogix.application.transaction.TransactionPort;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 @Configuration
 public class ApplicationConfiguration {
+    @Bean
+    public MaterialCatalog materialCatalog(MaterialCatalogPort materials, TransactionPort transactions) {
+        return new MaterialCatalog(materials, transactions);
+    }
+
     @Bean
     public HardwareCatalog hardwareCatalog(HardwareCatalogPort hardware, TransactionPort transactions) {
         return new HardwareCatalog(hardware, transactions);

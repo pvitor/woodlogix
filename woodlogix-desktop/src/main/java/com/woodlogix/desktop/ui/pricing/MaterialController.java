@@ -2,7 +2,7 @@ package com.woodlogix.desktop.ui.pricing;
 
 import com.woodlogix.desktop.persistence.entity.EdgeBandingEntity;
 import com.woodlogix.application.hardware.HardwareRow;
-import com.woodlogix.desktop.persistence.entity.MaterialEntity;
+import com.woodlogix.application.material.MaterialRow;
 import com.woodlogix.desktop.service.EdgeBandingData;
 import com.woodlogix.desktop.service.EdgeBandingService;
 import com.woodlogix.desktop.service.HardwareData;
@@ -65,7 +65,7 @@ public class MaterialController implements Initializable {
     private final TextField materialPriceField = new TextField();
     private final Button materialSaveButton = new Button();
     private final Button materialCancelButton = new Button();
-    private final TableView<MaterialEntity> materialTable = new TableView<>();
+    private final TableView<MaterialRow> materialTable = new TableView<>();
 
     private final TextField edgeBandingNameField = new TextField();
     private final TextField edgeBandingWidthField = new TextField();
@@ -184,18 +184,18 @@ public class MaterialController implements Initializable {
     }
 
     private void configureMaterialTable() {
-        TableColumn<MaterialEntity, String> name = column(
-                "materials.name", item -> item.getName());
-        TableColumn<MaterialEntity, String> color = column(
-                "materials.color", item -> item.getColor());
-        TableColumn<MaterialEntity, String> thickness = column(
-                "materials.thickness", item -> format(item.getThicknessMm()));
-        TableColumn<MaterialEntity, String> dimensions = column(
-                "materials.sheet-size", item -> format(item.getLengthMm()) + " × "
-                        + format(item.getWidthMm()));
-        TableColumn<MaterialEntity, String> price = column(
-                "materials.sheet-price", item -> currency(item.getPricePerSheet()));
-        TableColumn<MaterialEntity, Void> actions = actionColumn(
+        TableColumn<MaterialRow, String> name = column(
+                "materials.name", item -> item.name());
+        TableColumn<MaterialRow, String> color = column(
+                "materials.color", item -> item.color());
+        TableColumn<MaterialRow, String> thickness = column(
+                "materials.thickness", item -> format(item.thicknessMm()));
+        TableColumn<MaterialRow, String> dimensions = column(
+                "materials.sheet-size", item -> format(item.lengthMm()) + " × "
+                        + format(item.widthMm()));
+        TableColumn<MaterialRow, String> price = column(
+                "materials.sheet-price", item -> currency(item.pricePerSheet()));
+        TableColumn<MaterialRow, Void> actions = actionColumn(
                 this::editMaterial, this::deleteMaterial);
         materialTable.getColumns().setAll(name, color, thickness, dimensions, price, actions);
         materialTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
@@ -345,14 +345,14 @@ public class MaterialController implements Initializable {
                 }, message -> statusLabel.setText(message));
     }
 
-    private void editMaterial(MaterialEntity material) {
-        editingMaterialId = material.getId();
-        materialNameField.setText(material.getName());
-        materialColorField.setText(material.getColor());
-        materialThicknessField.setText(format(material.getThicknessMm()));
-        materialLengthField.setText(format(material.getLengthMm()));
-        materialWidthField.setText(format(material.getWidthMm()));
-        materialPriceField.setText(format(material.getPricePerSheet()));
+    private void editMaterial(MaterialRow material) {
+        editingMaterialId = material.id();
+        materialNameField.setText(material.name());
+        materialColorField.setText(material.color());
+        materialThicknessField.setText(format(material.thicknessMm()));
+        materialLengthField.setText(format(material.lengthMm()));
+        materialWidthField.setText(format(material.widthMm()));
+        materialPriceField.setText(format(material.pricePerSheet()));
         materialSaveButton.setText(text("action.save"));
         materialCancelButton.setVisible(true);
         materialCancelButton.setManaged(true);
@@ -378,13 +378,13 @@ public class MaterialController implements Initializable {
         hardwareCancelButton.setManaged(true);
     }
 
-    private void deleteMaterial(MaterialEntity material) {
-        if (!UiTaskRunner.confirm(format("dialog.confirm-delete-material", material.getName()),
+    private void deleteMaterial(MaterialRow material) {
+        if (!UiTaskRunner.confirm(format("dialog.confirm-delete-material", material.name()),
                 messages)) {
             return;
         }
         taskRunner.execute(() -> {
-            materialService.delete(material.getId());
+            materialService.delete(material.id());
             return null;
         }, messages, ignored -> {
             statusLabel.setText(text("status.material-deleted"));

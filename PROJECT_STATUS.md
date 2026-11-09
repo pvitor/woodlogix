@@ -2,7 +2,7 @@
 
 **Referência:** branch `feature/arquitetura-nova`, commit `60ebef9`.
 
-**Verificação de testes registrada em:** 8 nov. 2026.
+**Verificação de testes registrada em:** 9 nov. 2026.
 
 Este documento descreve o que foi encontrado no código, na persistência e nos testes. A existência de uma tela, entidade ou repositório, por si só, não significa que um fluxo de produto esteja completo. As instruções de contribuição e arquitetura permanecem em `.github/`; este arquivo registra o estado funcional, lacunas e evidências.
 
@@ -34,7 +34,7 @@ As versões estão declaradas no `pom.xml` raiz e nos POMs dos módulos.
 ### Implementação atual
 
 - **`woodlogix-core`** contém modelos de domínio, enums e cálculos (`PricingEngine`, `EdgeBandingCalculator`). Não depende de Spring, JavaFX ou JPA.
-- **`woodlogix-application`** contém os casos de uso do catálogo de ferragens e suas portas de persistência e transação, sem dependências de Spring ou JPA. A implementação transacional e os adaptadores JPA permanecem no Desktop.
+- **`woodlogix-application`** contém os casos de uso dos catálogos de ferragens e materiais e suas portas de persistência e transação, sem dependências de Spring ou JPA. A implementação transacional e os adaptadores JPA permanecem no Desktop.
 - **`woodlogix-desktop`** contém a aplicação JavaFX, controladores e FXML, serviços de casos de uso, entidades JPA, repositórios Spring Data, configuração SQLite e integração PDF.
 - **Serviços** coordenam operações como CRUD, validações, relações e transações. **Repositórios** estendem interfaces Spring Data JPA; não há DAOs JDBC manuais no fluxo atual.
 - **Integração JavaFX/Spring:** `WoodLogixDesktopLauncher` inicia `AppLauncher`; o contexto Spring é aberto no ciclo de vida JavaFX e encerrado em `stop()`. O `FXMLLoader` obtém controladores pelo contexto.
@@ -56,7 +56,7 @@ No **modo individual**, o fluxo aprovado é JavaFX → HTTP → Spring Boot loca
 
 No **modo compartilhado**, JavaFX acessará via HTTP um Spring Boot central na empresa, conectado a PostgreSQL. O acesso não dependerá obrigatoriamente de nuvem ou internet.
 
-Esses fluxos são **decisões de arquitetura, não funcionalidades disponíveis**: Application contém o catálogo de ferragens; ainda não existem o módulo Server, API/cliente HTTP nem persistência PostgreSQL. A migração prevista manterá o grafo JPA completo em um único módulo até sua transferência coordenada ao Server, seguida do corte dos consumidores JavaFX para HTTP, sem duas fontes de verdade.
+Esses fluxos são **decisões de arquitetura, não funcionalidades disponíveis**: Application contém os catálogos de ferragens e materiais; ainda não existem o módulo Server, API/cliente HTTP nem persistência PostgreSQL. A migração prevista manterá o grafo JPA completo em um único módulo até sua transferência coordenada ao Server, seguida do corte dos consumidores JavaFX para HTTP, sem duas fontes de verdade.
 
 ## 4. Funcionalidades
 
@@ -72,9 +72,9 @@ Legenda:
 | **Dashboard** | **Implementado, cobertura automatizada insuficiente.** `DashboardController` carrega de forma assíncrona a contagem de clientes, oportunidades fora da etapa `CLOSED`, contagem por etapa e existência do rascunho ativo. Os atalhos navegam para módulos existentes. Não há teste automatizado do controlador ou da interface; dados são consultados de serviços reais, não de fixtures de produção. |
 | **Clientes** | **Implementado e testado no serviço/persistência; interface sem cobertura automatizada.** `CustomerService` implementa cadastro, edição, exclusão e busca por nome parcial, e-mail ou telefone, sem distinguir maiúsculas/minúsculas. No SQLite migrado, a FK bloqueia exclusão de clientes referenciados e a violação reconhecida é traduzida pelo serviço. `PersistenceRepositoryTest` cobre busca, operações e dados inválidos. A tela `CustomerController` coordena formulário, pesquisa e tabela; seus cliques não são cobertos por teste de UI. |
 | **Ambientes** | **Implementado e testado no serviço/persistência; interface sem cobertura automatizada.** `EnvironmentService` associa ambientes a clientes, aceita tipos de catálogo e tipos personalizados e elimina duplicados. Na sincronização, verifica referências de peças legadas, móveis e projetos antes da remoção; a exclusão individual e a sincronização também traduzem violações SQLite de FK reconhecidas. Testes cobrem esses casos e rollback. |
-| **Materiais / chapas** | **Implementado e testado no serviço/persistência; interface sem cobertura automatizada.** `MaterialService` implementa CRUD de chapas com nome, cor, espessura, dimensões e preço por chapa. Há validação e bloqueio de exclusão quando a chapa está referenciada por peça ou rascunho; `PersistenceRepositoryTest` cobre CRUD e referências. |
+| **Materiais / chapas** | **Implementado e testado no serviço/persistência; interface de catálogo sem cobertura automatizada.** `MaterialCatalog`, `MaterialCatalogPort`, `MaterialInput` e `MaterialRow` residem em Application; `MaterialCatalogAdapter`, `MaterialService`, `MaterialController`, `PricingController` e `PricingWorkpiece` permanecem no Desktop. A exclusão verifica peças de projeto e rascunho e traduz violações SQLite de FK reconhecidas. |
 | **Ferragens** | **Implementado e testado no serviço/persistência; interface sem cobertura automatizada.** Os casos de uso do catálogo residem em Application; `HardwareService` é uma fachada no Desktop e os controllers usam records independentes de JPA. CRUD e restrição de exclusão são cobertos nos testes de persistência. |
-| **Orçamentos e cálculos** | **Cálculo implementado e testado em escopo limitado; fluxo de orçamento implementado com cobertura insuficiente de UI.** `PricingController` monta peças, seleciona projeto e insumos, mantém parâmetros e ferragens, atualiza o resumo e salva/restaura um rascunho ativo. As operações de peças de projetos e rascunho usam serviços separados. `PricingEngineTest` contém sete testes de domínio para áreas, consumo por área, desperdício, custo, margem e entradas inválidas. Não há testes automatizados que exercitem o fluxo JavaFX de edição, exclusão, resumo ou fechamento. O rascunho é único (`ACTIVE_DRAFT_ID = "active"`); não existe entidade de orçamento final/histórico de versões. |
+| **Orçamentos e cálculos** | **Cálculo implementado e testado em escopo limitado; fluxo de orçamento implementado com cobertura parcial de UI.** `PricingController` monta peças, seleciona projeto e insumos, mantém parâmetros e ferragens, atualiza o resumo e salva/restaura um rascunho ativo. Testes JavaFX cobrem cenários específicos de seleção de material, peças e restauração, não o fluxo completo. O rascunho é único (`ACTIVE_DRAFT_ID = "active"`); não existe entidade de orçamento final/histórico de versões. |
 | **Fitas de borda** | **Implementado e testado em cálculo e persistência, com cobertura limitada.** A quantidade linear decorre das arestas selecionadas, dimensões e quantidade da peça; o custo usa metros lineares e preço cadastrado. Existem testes no `PricingEngineTest` para comprimento/custo e testes de CRUD/referência no `PersistenceRepositoryTest`. Isso não representa um plano de corte ou uma estimativa de sobras de fita. |
 | **Pipeline de vendas** | **Implementado e testado no serviço/persistência; interação visual sem cobertura automatizada.** `SalesPipelineService` cria projetos vinculados a clientes e ambientes, lista projetos por etapas (`CONTACT`, `MEASUREMENT_SCHEDULED`, `QUOTE_SENT`, `NEGOTIATION`, `CLOSED`) e movimenta projetos entre etapas. `KanbanController` apresenta cartões e implementa movimentação por arrastar e soltar. Testes cobrem criação/movimentação no serviço, não o gesto de arrastar na tela. |
 | **Propostas em PDF** | **Implementado e testado com cobertura limitada.** `ProposalPdfService` gera PDF de uma página com dados de cliente/projeto, etapa e valor informado no projeto. Há testes de exportação e conteúdo em inglês e espanhol, além de teste integrado de exportação. O PDF usa o valor comercial do projeto; não calcula nem incorpora o resultado de `PricingEngine` ou o detalhamento do rascunho. |
@@ -93,7 +93,7 @@ Executado para este registro:
 ```text
 mvn -o test
 BUILD SUCCESS
-79 testes: 0 falhas, 0 erros, 0 ignorados
+92 testes: 0 falhas, 0 erros, 0 ignorados
 ```
 
 Grupos existentes:
@@ -101,6 +101,9 @@ Grupos existentes:
 - `woodlogix-core/.../PricingEngineTest.java` — 7 testes de área, comprimento/custo de fita, agrupamento e arredondamento de chapas, desperdício, custo base, preço/margem e entradas inválidas.
 - `woodlogix-application/.../DeleteHardwareTest.java` — verifica a ordem da exclusão, referências, ID inexistente e propagação de falhas sem Spring ou JPA.
 - `woodlogix-application/.../HardwareCatalogTest.java` — verifica criação, validações, atualização, listagem e falhas do catálogo sem Spring ou JPA.
+- `woodlogix-application/.../MaterialCatalogTest.java` — verifica validações, catálogo, exclusão, referências e falhas sem Spring ou JPA.
+- `woodlogix-desktop/.../MaterialCatalogIntegrationTest.java` — verifica CRUD, ordenação, FK real e rollback em SQLite temporário migrado.
+- `woodlogix-desktop/.../PricingControllerMaterialTest.java` — verifica cenários JavaFX de materiais e peças, com serviços simulados; exige ambiente gráfico JavaFX.
 - `woodlogix-desktop/.../HardwareCatalogIntegrationTest.java` — verifica catálogo, precisão dos valores testados e rollback após flush em SQLite temporário migrado.
 - `woodlogix-desktop/.../HardwareDeletionIntegrationTest.java` — verifica a exclusão por meio da fachada, FK real, transações e rollback após flush em SQLite temporário migrado.
 - `woodlogix-desktop/.../PersistenceRepositoryTest.java` — 22 testes de integração com Spring e SQLite temporário (`@TempDir`), cobrindo persistência de relações, CRUD e restrições de clientes, ambientes, insumos, ferragens, peças de projeto e rascunho; também pesquisa, dados inválidos, movimento de projeto e exportação PDF.
@@ -111,13 +114,14 @@ Grupos existentes:
 - `woodlogix-desktop/.../SqliteMigrationTest.java` — testa aplicação e reabertura da migração, recusa de banco não vazio sem histórico e validação de schema.
 - `woodlogix-desktop/.../DeletionErrorTranslationTest.java` — verifica reconhecimento seletivo de violações de FK SQLite e propagação de outros erros.
 
-**Lacunas de teste:** não há testes automatizados JavaFX/FXML para navegação, interação de formulário, arrastar e soltar, atualização visual de resumo, salvamento automático, restauração ou fechamento com alterações pendentes. Os testes do motor não validam aproveitamento real de chapas, ampla precisão monetária, regras de marcenaria de um móvel completo ou arredondamentos em vários cenários de produção. A exportação PDF não tem cobertura de paginação ou de integração com os valores calculados do orçamento.
+**Lacunas de teste:** a cobertura JavaFX é limitada aos cenários de materiais e peças descritos acima; não cobre navegação completa, arrastar e soltar, atualização visual de resumo ou fechamento com alterações pendentes. Os testes do motor não validam aproveitamento real de chapas, ampla precisão monetária, regras de marcenaria de um móvel completo ou arredondamentos em vários cenários de produção. A exportação PDF não tem cobertura de paginação ou de integração com os valores calculados do orçamento.
 
 ## 6. Limitações e riscos técnicos
 
 - **Precisão financeira:** entidades e DTOs de persistência usam `BigDecimal`, mas modelos usados por `PricingEngine` usam `double`. `PricingController` converte dimensões e preços persistidos de `BigDecimal` para `double` antes do cálculo. Para valores monetários, essa representação binária pode introduzir diferenças de precisão; os sete testes atuais usam tolerância numérica em exemplos simples e não estabelecem uma política abrangente de precisão/arredondamento.
 - **Consumo de chapas:** o cálculo por área não considera geometria, rotação, orientação/veio, espessura do corte, margens ou reaproveitamento de retalhos. O valor não deve ser interpretado como plano de corte ou garantia de quantidade de compra.
 - **Escopo do orçamento:** o sistema persiste um rascunho ativo e peças vinculadas a projetos, mas não um histórico de orçamentos emitidos. A proposta PDF exporta o valor comercial salvo no projeto, não o preço sugerido atualizado pelo cálculo do rascunho.
+- **Materiais em peças:** o schema armazena o ID do material, não um snapshot histórico de seus valores. As peças exibidas mantêm os valores carregados em memória; após restaurar ou recarregar, são usados os valores disponíveis no catálogo.
 - **Validações:** há validações nos modelos, records, serviços, entidades e na interface, mas elas não são uniformes em todos os caminhos. Os testes cobrem casos concretos; não demonstram uma auditoria completa de todas as combinações/limites.
 - **Integridade e evolução do banco:** a V1 do Flyway cria FKs físicas em bancos novos; sua fiscalização depende de `woodlogix.database.foreign-keys=true`, valor padrão configurável. A sincronização de ambientes verifica referências de peças, móveis e projetos; exclusões de clientes e ambientes traduzem violações SQLite de FK reconhecidas. Bancos anteriores sem histórico Flyway não são migrados automaticamente e exigem um plano específico de backup, diagnóstico e migração. Hibernate `validate` não substitui a verificação de FKs físicas.
 - **Tratamento de erros:** `UiTaskRunner` registra falhas de operações assíncronas e apresenta mensagem localizada com detalhes técnicos expansíveis. A experiência de erro não tem testes de interface, e operações/exportação não foram verificadas em todas as falhas de sistema de arquivos ou banco.

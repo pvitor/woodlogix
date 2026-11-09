@@ -1,16 +1,15 @@
 package com.woodlogix.desktop.service;
 
-import com.woodlogix.desktop.persistence.entity.MaterialEntity;
-import com.woodlogix.desktop.persistence.repository.MaterialRepository;
-import com.woodlogix.desktop.persistence.repository.EstimateDraftRepository;
-import com.woodlogix.desktop.persistence.repository.ProjectWorkpieceRepository;
+import com.woodlogix.application.material.MaterialCatalog;
+import com.woodlogix.application.material.MaterialInput;
+import com.woodlogix.application.material.MaterialNotFoundException;
+import com.woodlogix.application.material.MaterialRow;
+import com.woodlogix.desktop.persistence.SqliteIntegrityErrors;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.validation.Valid;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.validation.annotation.Validated;
 
 import java.util.List;
@@ -20,61 +19,49 @@ import java.util.Objects;
 @Validated
 public class MaterialService {
     private static final Logger LOGGER = LoggerFactory.getLogger(MaterialService.class);
-    private final MaterialRepository materialRepository;
-    private final ProjectWorkpieceRepository workpieceRepository;
-    private final EstimateDraftRepository estimateDraftRepository;
+    private final MaterialCatalog catalog;
 
-    public MaterialService(
-            MaterialRepository materialRepository,
-            ProjectWorkpieceRepository workpieceRepository,
-            EstimateDraftRepository estimateDraftRepository
-    ) {
-        this.materialRepository = Objects.requireNonNull(materialRepository);
-        this.workpieceRepository = Objects.requireNonNull(workpieceRepository);
-        this.estimateDraftRepository = Objects.requireNonNull(estimateDraftRepository);
+    public MaterialService(MaterialCatalog catalog) {
+        this.catalog = Objects.requireNonNull(catalog);
     }
 
-    @Transactional
-    public MaterialEntity create(@Valid MaterialData data) {
-        MaterialEntity material = materialRepository.saveAndFlush(new MaterialEntity(
-                data.name(), data.color(), data.thicknessMm(), data.lengthMm(),
-                data.widthMm(), data.pricePerSheet()));
+    public MaterialRow create(@Valid MaterialData data) {
+        MaterialRow material = catalog.create(toInput(data));
         LOGGER.info("Material registered");
         return material;
     }
 
-    @Transactional
-    public MaterialEntity update(String id, @Valid MaterialData data) {
-        MaterialEntity material = materialRepository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("error.material-not-found"));
-        material.update(data.name(), data.color(), data.thicknessMm(), data.lengthMm(),
-                data.widthMm(), data.pricePerSheet());
-        MaterialEntity updated = materialRepository.saveAndFlush(material);
-        LOGGER.info("Material updated");
-        return updated;
+    public MaterialRow update(String id, @Valid MaterialData data) {
+        try {
+            MaterialRow updated = catalog.update(id, toInput(data));
+            LOGGER.info("Material updated");
+            return updated;
+        } catch (MaterialNotFoundException exception) {
+            throw new EntityNotFoundException(exception.getMessage(), exception);
+        }
     }
 
-    @Transactional
     public void delete(String id) {
-        MaterialEntity material = materialRepository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("error.material-not-found"));
-        if (workpieceRepository.existsByMaterialId(id)
-                || estimateDraftRepository.existsByWorkpiecesMaterialId(id)) {
-            LOGGER.warn("Material deletion rejected because it is referenced by a workpiece");
-            throw new IllegalStateException("error.material-has-related-records");
-        }
         try {
-            materialRepository.delete(material);
-            materialRepository.flush();
-        } catch (DataIntegrityViolationException exception) {
+            catalog.delete(id);
+        } catch (MaterialNotFoundException exception) {
+            throw new EntityNotFoundException(exception.getMessage(), exception);
+        } catch (RuntimeException exception) {
+            if (!SqliteIntegrityErrors.isForeignKeyViolation(exception)) {
+                throw exception;
+            }
             LOGGER.warn("Material deletion rejected because it is referenced", exception);
             throw new IllegalStateException("error.material-has-related-records", exception);
         }
         LOGGER.info("Material deleted");
     }
 
-    @Transactional(readOnly = true)
-    public List<MaterialEntity> findAll() {
-        return materialRepository.findAllByOrderByNameAscColorAscThicknessMmAsc();
+    public List<MaterialRow> findAll() {
+        return catalog.findAll();
+    }
+
+    private static MaterialInput toInput(MaterialData data) {
+        return new MaterialInput(data.name(), data.color(), data.thicknessMm(),
+                data.lengthMm(), data.widthMm(), data.pricePerSheet());
     }
 }

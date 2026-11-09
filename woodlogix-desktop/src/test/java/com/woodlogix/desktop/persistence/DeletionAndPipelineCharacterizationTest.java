@@ -496,7 +496,7 @@ class DeletionAndPipelineCharacterizationTest {
                 new EdgeBandingData("PVC", money("22"), money("3")));
         var hardware = context.getBean(HardwareService.class).create(
                 new HardwareData("Hinge", "UNIT", money("14")));
-        return new Catalog(material.getId(), edge.getId(), hardware.id());
+        return new Catalog(material.id(), edge.getId(), hardware.id());
     }
 
     private AtomicBoolean failAfterDeletion(Class<?> eventType, String table, String id) {

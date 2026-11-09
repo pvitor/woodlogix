@@ -164,7 +164,7 @@ class PersistenceRepositoryTest {
                 "Hinge", "PAIR", new BigDecimal("12.00")));
         var workpiece = workpieceService.create(new ProjectWorkpieceData(
                 project.id(), "Door panel", new BigDecimal("700"),
-                new BigDecimal("500"), 2, material.getId(), edgeBanding.getId(),
+                new BigDecimal("500"), 2, material.id(), edgeBanding.getId(),
                 true, true, false, false));
 
         assertEquals(1, materialService.findAll().size());
@@ -172,13 +172,13 @@ class PersistenceRepositoryTest {
         assertEquals(1, hardwareService.findAll().size());
         assertEquals(1, workpieceService.findByProject(project.id()).size());
         assertEquals(project.id(), workpiece.getProject().getId());
-        assertEquals(material.getId(), workpiece.getMaterial().getId());
+        assertEquals(material.id(), workpiece.getMaterial().getId());
         assertEquals(edgeBanding.getId(), workpiece.getEdgeBanding().getId());
-        assertThrows(IllegalStateException.class, () -> materialService.delete(material.getId()));
+        assertThrows(IllegalStateException.class, () -> materialService.delete(material.id()));
         assertThrows(IllegalStateException.class,
                 () -> edgeBandingService.delete(edgeBanding.getId()));
 
-        materialService.update(material.getId(), new MaterialData(
+        materialService.update(material.id(), new MaterialData(
                 "MDF premium", "White", new BigDecimal("18"), new BigDecimal("2750"),
                 new BigDecimal("1840"), new BigDecimal("225.00")));
         edgeBandingService.update(edgeBanding.getId(), new EdgeBandingData(
@@ -187,17 +187,17 @@ class PersistenceRepositoryTest {
                 "Soft-close hinge", "PAIR", new BigDecimal("15.00")));
         workpieceService.update(workpiece.getId(), new ProjectWorkpieceData(
                 project.id(), "Updated door panel", new BigDecimal("710"),
-                new BigDecimal("510"), 3, material.getId(), edgeBanding.getId(),
+                new BigDecimal("510"), 3, material.id(), edgeBanding.getId(),
                 true, false, false, true));
 
-        assertEquals("MDF premium", materialService.findAll().get(0).getName());
+        assertEquals("MDF premium", materialService.findAll().get(0).name());
         assertEquals("PVC premium", edgeBandingService.findAll().get(0).getName());
         assertEquals("Soft-close hinge", hardwareService.findAll().get(0).name());
         assertEquals("Updated door panel",
                 workpieceService.findByProject(project.id()).get(0).getName());
 
         workpieceService.delete(workpiece.getId());
-        materialService.delete(material.getId());
+        materialService.delete(material.id());
         edgeBandingService.delete(edgeBanding.getId());
         hardwareService.delete(hardware.id());
         assertTrue(workpieceRepository.findAll().isEmpty());
@@ -227,7 +227,7 @@ class PersistenceRepositoryTest {
                 "Draft hinge", "PAIR", new BigDecimal("14.50")));
         var workpiece = new EstimateDraftData.EstimateDraftWorkpieceData(
                 null, "Counter panel", new BigDecimal("1200"), new BigDecimal("600"),
-                2, material.getId(), edgeBanding.getId(), true, false, true, false);
+                2, material.id(), edgeBanding.getId(), true, false, true, false);
         var hardwareUsage = new EstimateDraftData.EstimateDraftHardwareData(
                 hardware.id(), 4);
         EstimateDraftData freeDraft = new EstimateDraftData(
@@ -247,7 +247,7 @@ class PersistenceRepositoryTest {
         assertEquals(new BigDecimal("18"), persisted.getMachineRate());
         assertEquals(new BigDecimal("35"), persisted.getProfitMargin());
         assertEquals(freeDraft, restored);
-        assertThrows(IllegalStateException.class, () -> materialService.delete(material.getId()));
+        assertThrows(IllegalStateException.class, () -> materialService.delete(material.id()));
         assertThrows(IllegalStateException.class,
                 () -> edgeBandingService.delete(edgeBanding.getId()));
         assertThrows(IllegalStateException.class, () -> hardwareService.delete(hardware.id()));

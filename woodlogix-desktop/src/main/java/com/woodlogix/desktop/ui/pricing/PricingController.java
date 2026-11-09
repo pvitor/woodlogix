@@ -7,10 +7,8 @@ import com.woodlogix.core.model.Material;
 import com.woodlogix.core.model.Workpiece;
 import com.woodlogix.core.service.PricingEngine;
 import com.woodlogix.desktop.persistence.entity.EdgeBandingEntity;
-import com.woodlogix.desktop.persistence.entity.EstimateDraftWorkpieceEntity;
 import com.woodlogix.application.hardware.HardwareRow;
-import com.woodlogix.desktop.persistence.entity.MaterialEntity;
-import com.woodlogix.desktop.persistence.entity.ProjectWorkpieceEntity;
+import com.woodlogix.application.material.MaterialRow;
 import com.woodlogix.desktop.service.EdgeBandingService;
 import com.woodlogix.desktop.service.EstimateDraftData;
 import com.woodlogix.desktop.service.EstimateDraftService;
@@ -88,12 +86,12 @@ public class PricingController implements Initializable {
     private boolean closeRequested;
     private boolean projectWorkpiecesLoading;
     private Stage hostWindow;
-    private List<MaterialEntity> materials = List.of();
+    private List<MaterialRow> materials = List.of();
     private List<EdgeBandingEntity> edgeBandings = List.of();
     private List<HardwareRow> hardwares = List.of();
 
     @FXML private ComboBox<SalesProjectRow> projectComboBox;
-    @FXML private ComboBox<MaterialEntity> materialComboBox;
+    @FXML private ComboBox<MaterialRow> materialComboBox;
     @FXML private ComboBox<EdgeBandingEntity> edgeBandingComboBox;
     @FXML private ComboBox<HardwareRow> hardwareComboBox;
     @FXML private TextField nameField;
@@ -114,12 +112,12 @@ public class PricingController implements Initializable {
     @FXML private Button addWorkpieceButton;
     @FXML private VBox workpieceForm;
     @FXML private Label editingIndicator;
-    @FXML private TableView<EstimateDraftWorkpieceEntity> workpieceTable;
-    @FXML private TableColumn<EstimateDraftWorkpieceEntity, String> workpieceNameColumn;
-    @FXML private TableColumn<EstimateDraftWorkpieceEntity, String> dimensionsColumn;
-    @FXML private TableColumn<EstimateDraftWorkpieceEntity, String> quantityColumn;
-    @FXML private TableColumn<EstimateDraftWorkpieceEntity, String> materialColumn;
-    @FXML private TableColumn<EstimateDraftWorkpieceEntity, Void> actionsColumn;
+    @FXML private TableView<PricingWorkpiece> workpieceTable;
+    @FXML private TableColumn<PricingWorkpiece, String> workpieceNameColumn;
+    @FXML private TableColumn<PricingWorkpiece, String> dimensionsColumn;
+    @FXML private TableColumn<PricingWorkpiece, String> quantityColumn;
+    @FXML private TableColumn<PricingWorkpiece, String> materialColumn;
+    @FXML private TableColumn<PricingWorkpiece, Void> actionsColumn;
     @FXML private VBox hardwareSummary;
     @FXML private Label sheetCountLabel;
     @FXML private Label edgeMetersLabel;
@@ -164,7 +162,7 @@ public class PricingController implements Initializable {
                     projectWorkpiecesLoading = false;
                     workpieceTable.setItems(FXCollections.observableArrayList(
                             workpieceTable.getItems().stream()
-                                    .map(item -> new EstimateDraftWorkpieceEntity(null,
+                                    .map(item -> new PricingWorkpiece(null,
                                             item.getName(), item.getLengthMm(),
                                             item.getWidthMm(), item.getQuantity(),
                                             item.getMaterial(), item.getEdgeBanding(),
@@ -217,9 +215,9 @@ public class PricingController implements Initializable {
     @FXML
     private void clearProjectLink() {
         clearForm();
-        List<EstimateDraftWorkpieceEntity> standaloneWorkpieces =
+        List<PricingWorkpiece> standaloneWorkpieces =
                 workpieceTable.getItems().stream()
-                        .map(item -> new EstimateDraftWorkpieceEntity(null, item.getName(),
+                        .map(item -> new PricingWorkpiece(null, item.getName(),
                                 item.getLengthMm(), item.getWidthMm(), item.getQuantity(),
                                 item.getMaterial(), item.getEdgeBanding(), item.isEdgeTop(),
                                 item.isEdgeBottom(), item.isEdgeLeft(), item.isEdgeRight()))
@@ -255,14 +253,14 @@ public class PricingController implements Initializable {
         projectComboBox.setButtonCell(cell(projectComboBox.getConverter()));
         materialComboBox.setCellFactory(list -> new ListCell<>() {
             @Override
-            protected void updateItem(MaterialEntity item, boolean empty) {
+            protected void updateItem(MaterialRow item, boolean empty) {
                 super.updateItem(item, empty);
                 setText(empty || item == null ? null : materialName(item));
             }
         });
         materialComboBox.setButtonCell(new ListCell<>() {
             @Override
-            protected void updateItem(MaterialEntity item, boolean empty) {
+            protected void updateItem(MaterialRow item, boolean empty) {
                 super.updateItem(item, empty);
                 setText(empty || item == null ? null : materialName(item));
             }
@@ -317,7 +315,7 @@ public class PricingController implements Initializable {
         BigDecimal length = decimal(lengthField);
         BigDecimal width = decimal(widthField);
         Integer quantity = integer(quantityField);
-        MaterialEntity material = materialComboBox.getValue();
+        MaterialRow material = materialComboBox.getValue();
         boolean hasEdges = topEdgeCheckBox.isSelected() || bottomEdgeCheckBox.isSelected()
                 || leftEdgeCheckBox.isSelected() || rightEdgeCheckBox.isSelected();
         EdgeBandingEntity edgeBanding = edgeBandingComboBox.getValue();
@@ -328,11 +326,11 @@ public class PricingController implements Initializable {
             showValidation("validation.workpiece-required");
             return;
         }
-        EstimateDraftWorkpieceEntity editing = workpieceTable.getItems().stream()
+        PricingWorkpiece editing = workpieceTable.getItems().stream()
                 .filter(item -> item.getId().equals(editingWorkpieceId))
                 .findFirst().orElse(null);
         if (project == null || editing != null && editing.getProjectWorkpieceId() == null) {
-            EstimateDraftWorkpieceEntity saved = new EstimateDraftWorkpieceEntity(null,
+            PricingWorkpiece saved = new PricingWorkpiece(null,
                     nameField.getText().trim(), length, width, quantity, material,
                     edgeBanding, topEdgeCheckBox.isSelected(), bottomEdgeCheckBox.isSelected(),
                     leftEdgeCheckBox.isSelected(), rightEdgeCheckBox.isSelected());
@@ -354,19 +352,18 @@ public class PricingController implements Initializable {
                 ? null : editing.getProjectWorkpieceId();
         ProjectWorkpieceData data = new ProjectWorkpieceData(
                 project.id(), nameField.getText().trim(), length, width, quantity,
-                material.getId(), edgeBanding == null ? null : edgeBanding.getId(),
+                material.id(), edgeBanding == null ? null : edgeBanding.getId(),
                 topEdgeCheckBox.isSelected(), bottomEdgeCheckBox.isSelected(),
                 leftEdgeCheckBox.isSelected(), rightEdgeCheckBox.isSelected());
-        taskRunner.execute(() -> projectWorkpieceId == null
+        taskRunner.execute(() -> PricingWorkpiece.fromProject(projectWorkpieceId == null
                         ? workpieceService.create(data)
-                        : workpieceService.update(projectWorkpieceId, data),
+                        : workpieceService.update(projectWorkpieceId, data)),
                 messages, saved -> {
-                    EstimateDraftWorkpieceEntity draftWorkpiece = toDraftWorkpiece(saved);
                     if (editing == null) {
-                        workpieceTable.getItems().add(draftWorkpiece);
+                        workpieceTable.getItems().add(saved);
                     } else {
                         int index = workpieceTable.getItems().indexOf(editing);
-                        workpieceTable.getItems().set(index, draftWorkpiece);
+                        workpieceTable.getItems().set(index, saved);
                     }
                     clearForm();
                     saveDraft();
@@ -411,7 +408,7 @@ public class PricingController implements Initializable {
             boolean restoreSavedDraft
     ) {
         String selectedMaterialId = materialComboBox.getValue() == null
-                ? null : materialComboBox.getValue().getId();
+                ? null : materialComboBox.getValue().id();
         String selectedEdgeBandingId = edgeBandingComboBox.getValue() == null
                 ? null : edgeBandingComboBox.getValue().getId();
         String selectedHardwareId = hardwareComboBox.getValue() == null
@@ -424,7 +421,7 @@ public class PricingController implements Initializable {
                     .findFirst().ifPresent(projectComboBox.getSelectionModel()::select);
             materials = List.copyOf(data.materials());
             materialComboBox.setItems(FXCollections.observableArrayList(materials));
-            selectById(materials, selectedMaterialId, MaterialEntity::getId,
+            selectById(materials, selectedMaterialId, MaterialRow::id,
                     materialComboBox);
             edgeBandings = List.copyOf(data.edgeBandings());
             edgeBandingComboBox.setItems(FXCollections.observableArrayList(edgeBandings));
@@ -481,8 +478,8 @@ public class PricingController implements Initializable {
             machineRateField.setText(draft.machineRate().toPlainString());
             marginField.setText(draft.profitMargin().toPlainString());
 
-            List<EstimateDraftWorkpieceEntity> workpieces = draft.workpieces().stream()
-                    .map(item -> new EstimateDraftWorkpieceEntity(
+            List<PricingWorkpiece> workpieces = draft.workpieces().stream()
+                    .map(item -> new PricingWorkpiece(
                             item.projectWorkpieceId(), item.name(), item.lengthMm(),
                             item.widthMm(), item.quantity(), findMaterial(item.materialId()),
                             findEdgeBanding(item.edgeBandingId()), item.edgeTop(),
@@ -570,7 +567,7 @@ public class PricingController implements Initializable {
                         new EstimateDraftData.EstimateDraftWorkpieceData(
                                 item.getProjectWorkpieceId(), item.getName(),
                                 item.getLengthMm(), item.getWidthMm(), item.getQuantity(),
-                                item.getMaterial().getId(),
+                                item.getMaterial().id(),
                                 item.getEdgeBanding() == null ? null
                                         : item.getEdgeBanding().getId(),
                                 item.isEdgeTop(), item.isEdgeBottom(),
@@ -616,8 +613,8 @@ public class PricingController implements Initializable {
         }, true);
     }
 
-    private MaterialEntity findMaterial(String id) {
-        return materials.stream().filter(material -> material.getId().equals(id))
+    private MaterialRow findMaterial(String id) {
+        return materials.stream().filter(material -> material.id().equals(id))
                 .findFirst().orElseThrow(() ->
                         new IllegalStateException("Draft material is no longer available"));
     }
@@ -643,7 +640,7 @@ public class PricingController implements Initializable {
 
     private record PricingViewData(
             List<SalesProjectRow> projects,
-            List<MaterialEntity> materials,
+            List<MaterialRow> materials,
             List<EdgeBandingEntity> edgeBandings,
             List<HardwareRow> hardwares,
             java.util.Optional<EstimateDraftData> draft
@@ -658,13 +655,13 @@ public class PricingController implements Initializable {
             return;
         }
         projectWorkpiecesLoading = true;
-        taskRunner.execute(() -> workpieceService.findByProject(project.id()), messages,
+        taskRunner.execute(() -> workpieceService.findByProject(project.id()).stream()
+                        .map(PricingWorkpiece::fromProject).toList(), messages,
                 workpieces -> {
                     if (projectComboBox.getValue() != null
                             && project.id().equals(projectComboBox.getValue().id())) {
                         projectWorkpiecesLoading = false;
-                        workpieceTable.setItems(FXCollections.observableArrayList(workpieces
-                                .stream().map(this::toDraftWorkpiece).toList()));
+                        workpieceTable.setItems(FXCollections.observableArrayList(workpieces));
                         statusLabel.setText(text("status.synced"));
                         saveDraft();
                         updateSummary();
@@ -684,7 +681,7 @@ public class PricingController implements Initializable {
                 });
     }
 
-    private void editWorkpiece(EstimateDraftWorkpieceEntity workpiece) {
+    private void editWorkpiece(PricingWorkpiece workpiece) {
         editingWorkpieceId = workpiece.getId();
         if (!workpieceForm.getStyleClass().contains("editing")) {
             workpieceForm.getStyleClass().add("editing");
@@ -696,7 +693,7 @@ public class PricingController implements Initializable {
         widthField.setText(formatDimension(workpiece.getWidthMm()));
         quantityField.setText(Integer.toString(workpiece.getQuantity()));
         materials.stream()
-                .filter(material -> material.getId().equals(workpiece.getMaterial().getId()))
+                .filter(material -> material.id().equals(workpiece.getMaterial().id()))
                 .findFirst().ifPresent(materialComboBox.getSelectionModel()::select);
         if (workpiece.getEdgeBanding() == null) {
             edgeBandingComboBox.getSelectionModel().clearSelection();
@@ -714,7 +711,7 @@ public class PricingController implements Initializable {
         cancelEditButton.setManaged(true);
     }
 
-    private void confirmDeleteWorkpiece(EstimateDraftWorkpieceEntity workpiece) {
+    private void confirmDeleteWorkpiece(PricingWorkpiece workpiece) {
         if (!UiTaskRunner.confirm(format("dialog.confirm-delete-workpiece", workpiece.getName()),
                 messages)) {
             return;
@@ -805,9 +802,9 @@ public class PricingController implements Initializable {
         }
     }
 
-    private TableCell<EstimateDraftWorkpieceEntity, Void> createActionsCell(
-            Consumer<EstimateDraftWorkpieceEntity> editAction,
-            Consumer<EstimateDraftWorkpieceEntity> deleteAction
+    private TableCell<PricingWorkpiece, Void> createActionsCell(
+            Consumer<PricingWorkpiece> editAction,
+            Consumer<PricingWorkpiece> deleteAction
     ) {
         return new TableCell<>() {
             private final Button editButton = actionButton("tooltip.action-edit",
@@ -822,13 +819,13 @@ public class PricingController implements Initializable {
                 editButton.getStyleClass().add("btn-edit");
                 deleteButton.getStyleClass().add("btn-delete");
                 editButton.setOnAction(event -> {
-                    EstimateDraftWorkpieceEntity row = getTableRow().getItem();
+                    PricingWorkpiece row = getTableRow().getItem();
                     if (row != null) {
                         editAction.accept(row);
                     }
                 });
                 deleteButton.setOnAction(event -> {
-                    EstimateDraftWorkpieceEntity row = getTableRow().getItem();
+                    PricingWorkpiece row = getTableRow().getItem();
                     if (row != null) {
                         deleteAction.accept(row);
                     }
@@ -854,7 +851,7 @@ public class PricingController implements Initializable {
         return button;
     }
 
-    private Workpiece toCore(EstimateDraftWorkpieceEntity entity) {
+    private Workpiece toCore(PricingWorkpiece entity) {
         Material material = toCore(entity.getMaterial());
         EdgeBanding edgeBanding = entity.getEdgeBanding() == null
                 ? null : toCore(entity.getEdgeBanding());
@@ -865,17 +862,10 @@ public class PricingController implements Initializable {
                 entity.isEdgeBottom(), entity.isEdgeLeft(), entity.isEdgeRight());
     }
 
-    private EstimateDraftWorkpieceEntity toDraftWorkpiece(ProjectWorkpieceEntity entity) {
-        return new EstimateDraftWorkpieceEntity(entity.getId(), entity.getName(),
-                entity.getLengthMm(), entity.getWidthMm(), entity.getQuantity(),
-                entity.getMaterial(), entity.getEdgeBanding(), entity.isEdgeTop(),
-                entity.isEdgeBottom(), entity.isEdgeLeft(), entity.isEdgeRight());
-    }
-
-    private Material toCore(MaterialEntity entity) {
-        return new Material(entity.getId(), entity.getName(), entity.getColor(),
-                entity.getThicknessMm().doubleValue(), entity.getLengthMm().doubleValue(),
-                entity.getWidthMm().doubleValue(), entity.getPricePerSheet().doubleValue());
+    private Material toCore(MaterialRow material) {
+        return new Material(material.id(), material.name(), material.color(),
+                material.thicknessMm().doubleValue(), material.lengthMm().doubleValue(),
+                material.widthMm().doubleValue(), material.pricePerSheet().doubleValue());
     }
 
     private EdgeBanding toCore(EdgeBandingEntity entity) {
@@ -924,9 +914,9 @@ public class PricingController implements Initializable {
         UiTaskRunner.showInformation(text("dialog.error-header"), text(key), messages);
     }
 
-    private String materialName(MaterialEntity material) {
-        return material.getName() + " · " + material.getColor() + " · "
-                + formatDimension(material.getThicknessMm()) + " mm";
+    private String materialName(MaterialRow material) {
+        return material.name() + " · " + material.color() + " · "
+                + formatDimension(material.thicknessMm()) + " mm";
     }
 
     private String edgeBandingName(EdgeBandingEntity edgeBanding) {
