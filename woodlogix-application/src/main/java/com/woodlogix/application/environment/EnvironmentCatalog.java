@@ -91,19 +91,13 @@ public class EnvironmentCatalog {
         });
     }
 
-    public List<EnvironmentRow> saveOrUpdateCustomerEnvironments(String customerId,
+    public EnvironmentSyncResult saveOrUpdateCustomerEnvironments(String customerId,
                                                                  List<String> roomTypes) {
-        return saveOrUpdateCustomerEnvironments(customerId, roomTypes, () -> {});
-    }
-
-    public List<EnvironmentRow> saveOrUpdateCustomerEnvironments(String customerId,
-                                                                 List<String> roomTypes,
-                                                                 Runnable onSynchronized) {
-        return transactions.executeWithResult(() -> synchronize(customerId, roomTypes, onSynchronized));
+        return transactions.executeWithResult(() -> synchronize(customerId, roomTypes));
     }
 
     public void deleteAllByCustomer(String customerId) {
-        transactions.execute(() -> synchronize(customerId, List.of(), () -> {}));
+        transactions.execute(() -> synchronize(customerId, List.of()));
     }
 
     public EnvironmentRow update(String environmentId, String customerId, String type) {
@@ -129,8 +123,7 @@ public class EnvironmentCatalog {
         });
     }
 
-    private List<EnvironmentRow> synchronize(String customerId, List<String> roomTypes,
-                                             Runnable onSynchronized) {
+    private EnvironmentSyncResult synchronize(String customerId, List<String> roomTypes) {
         requireCustomer(customerId);
 
         Map<String, String> requestedTypes = new LinkedHashMap<>();
@@ -164,7 +157,7 @@ public class EnvironmentCatalog {
 
         if (environmentsToRemove.isEmpty() && environmentsToRename.isEmpty()
                 && typesToCreate.isEmpty()) {
-            return existing;
+            return new EnvironmentSyncResult(existing, false, requestedTypes.size());
         }
 
         boolean hasLinkedRecords = environmentsToRemove.stream()
@@ -187,10 +180,7 @@ public class EnvironmentCatalog {
         }
 
         notifier.environmentChanged();
-        if (onSynchronized != null) {
-            onSynchronized.run();
-        }
-        return environments.findByCustomer(customerId);
+        return new EnvironmentSyncResult(environments.findByCustomer(customerId), true, requestedTypes.size());
     }
 
     private void requireCustomer(String customerId) {
@@ -208,7 +198,7 @@ public class EnvironmentCatalog {
         return new ArrayList<>(uniqueRows.values());
     }
 
-    public static String normalizeRoomType(String roomType) {
+    private static String normalizeRoomType(String roomType) {
         return roomType.trim()
                 .replaceAll("[\\s_-]+", "")
                 .toLowerCase(Locale.ROOT);

@@ -5,6 +5,7 @@ import com.woodlogix.application.customer.CustomerRow;
 import com.woodlogix.application.environment.EnvironmentCatalog;
 import com.woodlogix.application.environment.EnvironmentNotFoundException;
 import com.woodlogix.application.environment.EnvironmentRow;
+import com.woodlogix.application.environment.EnvironmentSyncResult;
 import com.woodlogix.core.enums.RoomType;
 import com.woodlogix.desktop.persistence.SqliteIntegrityErrors;
 import com.woodlogix.desktop.persistence.repository.CustomerRepository;
@@ -76,16 +77,13 @@ public class EnvironmentService {
             @NotBlank String customerId,
             @NotNull List<@NotBlank String> roomTypes
     ) {
-        int requestedCount = (int) roomTypes.stream()
-                .map(EnvironmentCatalog::normalizeRoomType)
-                .distinct()
-                .count();
         try {
-            return catalog.saveOrUpdateCustomerEnvironments(
-                    customerId,
-                    roomTypes,
-                    () -> LOGGER.info("Customer environments synchronized: {}", requestedCount)
-            );
+            EnvironmentSyncResult result =
+                    catalog.saveOrUpdateCustomerEnvironments(customerId, roomTypes);
+            if (result.changed()) {
+                LOGGER.info("Customer environments synchronized: {}", result.requestedCount());
+            }
+            return result.environments();
         } catch (RuntimeException exception) {
             throw translateReplacementFailure(exception);
         }
