@@ -1,5 +1,7 @@
 package com.woodlogix.desktop.service;
 
+import com.woodlogix.application.edgebanding.EdgeBandingCatalog;
+import com.woodlogix.application.edgebanding.EdgeBandingCatalogPort;
 import com.woodlogix.application.hardware.DeleteHardware;
 import com.woodlogix.application.hardware.HardwareCatalog;
 import com.woodlogix.application.hardware.HardwareCatalogPort;
@@ -12,6 +14,12 @@ import org.springframework.context.annotation.Configuration;
 
 @Configuration
 public class ApplicationConfiguration {
+    @Bean
+    public EdgeBandingCatalog edgeBandingCatalog(EdgeBandingCatalogPort edgeBandings,
+                                                 TransactionPort transactions) {
+        return new EdgeBandingCatalog(edgeBandings, transactions);
+    }
+
     @Bean
     public MaterialCatalog materialCatalog(MaterialCatalogPort materials, TransactionPort transactions) {
         return new MaterialCatalog(materials, transactions);

@@ -1,5 +1,6 @@
 package com.woodlogix.desktop.persistence.entity;
 
+import com.woodlogix.application.edgebanding.EdgeBandingInput;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
@@ -12,7 +13,6 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
-import java.util.Objects;
 import java.util.UUID;
 
 @Entity
@@ -44,32 +44,9 @@ public class EdgeBandingEntity {
     }
 
     public void update(String name, BigDecimal widthMm, BigDecimal pricePerMeter) {
-        this.name = requireText(name, "name");
-        this.widthMm = requirePositive(widthMm, "widthMm");
-        this.pricePerMeter = requireNonNegative(pricePerMeter, "pricePerMeter");
-    }
-
-    private static BigDecimal requirePositive(BigDecimal value, String name) {
-        Objects.requireNonNull(value, name + " must not be null");
-        if (value.signum() <= 0) {
-            throw new IllegalArgumentException(name + " must be positive");
-        }
-        return value;
-    }
-
-    private static BigDecimal requireNonNegative(BigDecimal value, String name) {
-        Objects.requireNonNull(value, name + " must not be null");
-        if (value.signum() < 0) {
-            throw new IllegalArgumentException(name + " must not be negative");
-        }
-        return value;
-    }
-
-    private static String requireText(String value, String name) {
-        Objects.requireNonNull(value, name + " must not be null");
-        if (value.isBlank()) {
-            throw new IllegalArgumentException(name + " must not be blank");
-        }
-        return value;
+        var input = new EdgeBandingInput(name, widthMm, pricePerMeter);
+        this.name = input.name();
+        this.widthMm = input.widthMm();
+        this.pricePerMeter = input.pricePerMeter();
     }
 }

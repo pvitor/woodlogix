@@ -1,13 +1,16 @@
 package com.woodlogix.desktop.ui.pricing;
 
+import com.woodlogix.application.edgebanding.EdgeBandingRow;
 import com.woodlogix.application.material.MaterialRow;
 import com.woodlogix.core.enums.SalesStage;
+import com.woodlogix.desktop.persistence.entity.EdgeBandingEntity;
 import com.woodlogix.desktop.persistence.entity.MaterialEntity;
 import com.woodlogix.desktop.persistence.entity.ProjectWorkpieceEntity;
 import com.woodlogix.desktop.service.*;
 import com.woodlogix.desktop.ui.UiTaskRunner;
 import javafx.application.Platform;
 import javafx.fxml.FXMLLoader;
+import javafx.scene.control.CheckBox;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.TableView;
 import javafx.scene.control.TextField;
@@ -38,6 +41,8 @@ class PricingControllerMaterialTest {
             bd("18"), bd("1000"), bd("1000"), bd("100"));
     private final MaterialRow changed = new MaterialRow("material", "MDF", "White",
             bd("18"), bd("1000"), bd("1000"), bd("250"));
+    private final EdgeBandingRow edge = new EdgeBandingRow("edge", "PVC", bd("22"), bd("2.50"));
+    private final EdgeBandingRow edgeChanged = new EdgeBandingRow("edge", "PVC", bd("22"), bd("9.00"));
 
     @BeforeAll
     static void startJavaFx() throws Exception {
@@ -186,6 +191,85 @@ class PricingControllerMaterialTest {
         });
     }
 
+    @Test
+    void keepsEdgeBandingForPiecesWithAndWithoutItAndUsesCurrentCatalogOnRestore() throws Exception {
+        fx(() -> {
+            ReflectionTestUtils.setField(controller, "edgeBandings", List.of(edge));
+            edgeCombo().getItems().setAll(edge);
+            materialCombo().getSelectionModel().select(original);
+            edgeCombo().getSelectionModel().select(edge);
+            check("topEdgeCheckBox").setSelected(true);
+            fillForm();
+            ReflectionTestUtils.invokeMethod(controller, "saveWorkpiece");
+            materialCombo().getSelectionModel().select(original);
+            fillForm();
+            ReflectionTestUtils.invokeMethod(controller, "saveWorkpiece");
+            assertEquals(2, table().getItems().size());
+            var withEdge = table().getItems().get(0);
+            var withoutEdge = table().getItems().get(1);
+            assertEquals(edge, withEdge.getEdgeBanding());
+            assertTrue(withEdge.isEdgeTop());
+            assertNull(withoutEdge.getEdgeBanding());
+            var draft = (EstimateDraftData) ReflectionTestUtils.invokeMethod(controller, "buildDraftData");
+            assertNotNull(draft);
+            assertEquals("edge", draft.workpieces().get(0).edgeBandingId());
+            assertNull(draft.workpieces().get(1).edgeBandingId());
+
+            ReflectionTestUtils.invokeMethod(controller, "editWorkpiece", withEdge);
+            assertEquals(edge, edgeCombo().getValue());
+            ReflectionTestUtils.invokeMethod(controller, "editWorkpiece", withoutEdge);
+            assertNull(edgeCombo().getValue());
+            var core = (com.woodlogix.core.model.Workpiece)
+                    ReflectionTestUtils.invokeMethod(controller, "toCore", withEdge);
+            assertNotNull(core);
+            assertEquals(2.5, core.getEdgeBanding().getPricePerLinearMeter());
+
+            ReflectionTestUtils.setField(controller, "edgeBandings", List.of(edgeChanged));
+            edgeCombo().getItems().setAll(edgeChanged);
+            var saved = new EstimateDraftData(null, bd("1"), bd("2"), bd("3"), bd("4"), bd("5"),
+                    List.of(new EstimateDraftData.EstimateDraftWorkpieceData(null, "With", bd("100"),
+                                    bd("200"), 1, "material", "edge", true, false, false, false),
+                            new EstimateDraftData.EstimateDraftWorkpieceData(null, "Without", bd("100"),
+                                    bd("200"), 1, "material", null, false, false, false, false)), List.of());
+            ReflectionTestUtils.invokeMethod(controller, "restoreDraft", saved);
+            assertEquals(edgeChanged, table().getItems().get(0).getEdgeBanding());
+            assertNull(table().getItems().get(1).getEdgeBanding());
+            var restored = (EstimateDraftData) ReflectionTestUtils.invokeMethod(controller, "buildDraftData");
+            assertNotNull(restored);
+            assertEquals("edge", restored.workpieces().get(0).edgeBandingId());
+            assertNull(restored.workpieces().get(1).edgeBandingId());
+            return null;
+        });
+    }
+
+    @Test
+    void mapsProjectPieceEdgeBandingOnlyWhenPresent() {
+        var materialEntity = mock(MaterialEntity.class);
+        when(materialEntity.getId()).thenReturn("material");
+        when(materialEntity.getName()).thenReturn("MDF");
+        when(materialEntity.getColor()).thenReturn("White");
+        when(materialEntity.getThicknessMm()).thenReturn(bd("18"));
+        when(materialEntity.getLengthMm()).thenReturn(bd("1000"));
+        when(materialEntity.getWidthMm()).thenReturn(bd("1000"));
+        when(materialEntity.getPricePerSheet()).thenReturn(bd("100"));
+        var edgeEntity = mock(EdgeBandingEntity.class);
+        when(edgeEntity.getId()).thenReturn("edge");
+        when(edgeEntity.getName()).thenReturn("PVC");
+        when(edgeEntity.getWidthMm()).thenReturn(bd("22"));
+        when(edgeEntity.getPricePerMeter()).thenReturn(bd("2.50"));
+        var piece = mock(ProjectWorkpieceEntity.class);
+        when(piece.getId()).thenReturn("piece");
+        when(piece.getName()).thenReturn("Panel");
+        when(piece.getLengthMm()).thenReturn(bd("100"));
+        when(piece.getWidthMm()).thenReturn(bd("200"));
+        when(piece.getQuantity()).thenReturn(1);
+        when(piece.getMaterial()).thenReturn(materialEntity);
+        when(piece.getEdgeBanding()).thenReturn(edgeEntity);
+        assertEquals(edge, PricingWorkpiece.fromProject(piece).getEdgeBanding());
+        when(piece.getEdgeBanding()).thenReturn(null);
+        assertNull(PricingWorkpiece.fromProject(piece).getEdgeBanding());
+    }
+
     private void fillForm() {
         field("nameField").setText("Panel");
         field("lengthField").setText("100");
@@ -194,6 +278,9 @@ class PricingControllerMaterialTest {
     }
 
     private TextField field(String name) { return (TextField) ReflectionTestUtils.getField(controller, name); }
+    private CheckBox check(String name) { return (CheckBox) ReflectionTestUtils.getField(controller, name); }
+    @SuppressWarnings("unchecked")
+    private ComboBox<EdgeBandingRow> edgeCombo() { return (ComboBox<EdgeBandingRow>) ReflectionTestUtils.getField(controller, "edgeBandingComboBox"); }
     @SuppressWarnings("unchecked")
     private ComboBox<MaterialRow> materialCombo() { return (ComboBox<MaterialRow>) ReflectionTestUtils.getField(controller, "materialComboBox"); }
     @SuppressWarnings("unchecked")

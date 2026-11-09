@@ -325,7 +325,7 @@ class EnvironmentAndDraftCharacterizationTest {
                 new EdgeBandingData("PVC", new BigDecimal("22"), new BigDecimal("3")));
         var hardware = context.getBean(HardwareService.class).create(
                 new HardwareData("Hinge", "UNIT", new BigDecimal("14")));
-        return new DraftFixture(project.id(), material.id(), edge.getId(), hardware.id());
+        return new DraftFixture(project.id(), material.id(), edge.id(), hardware.id());
     }
 
     private static EstimateDraftData draft(

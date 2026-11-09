@@ -6,7 +6,7 @@ import com.woodlogix.core.model.HardwareUsage;
 import com.woodlogix.core.model.Material;
 import com.woodlogix.core.model.Workpiece;
 import com.woodlogix.core.service.PricingEngine;
-import com.woodlogix.desktop.persistence.entity.EdgeBandingEntity;
+import com.woodlogix.application.edgebanding.EdgeBandingRow;
 import com.woodlogix.application.hardware.HardwareRow;
 import com.woodlogix.application.material.MaterialRow;
 import com.woodlogix.desktop.service.EdgeBandingService;
@@ -87,12 +87,12 @@ public class PricingController implements Initializable {
     private boolean projectWorkpiecesLoading;
     private Stage hostWindow;
     private List<MaterialRow> materials = List.of();
-    private List<EdgeBandingEntity> edgeBandings = List.of();
+    private List<EdgeBandingRow> edgeBandings = List.of();
     private List<HardwareRow> hardwares = List.of();
 
     @FXML private ComboBox<SalesProjectRow> projectComboBox;
     @FXML private ComboBox<MaterialRow> materialComboBox;
-    @FXML private ComboBox<EdgeBandingEntity> edgeBandingComboBox;
+    @FXML private ComboBox<EdgeBandingRow> edgeBandingComboBox;
     @FXML private ComboBox<HardwareRow> hardwareComboBox;
     @FXML private TextField nameField;
     @FXML private TextField lengthField;
@@ -267,14 +267,14 @@ public class PricingController implements Initializable {
         });
         edgeBandingComboBox.setCellFactory(list -> new ListCell<>() {
             @Override
-            protected void updateItem(EdgeBandingEntity item, boolean empty) {
+            protected void updateItem(EdgeBandingRow item, boolean empty) {
                 super.updateItem(item, empty);
                 setText(empty || item == null ? null : edgeBandingName(item));
             }
         });
         edgeBandingComboBox.setButtonCell(new ListCell<>() {
             @Override
-            protected void updateItem(EdgeBandingEntity item, boolean empty) {
+            protected void updateItem(EdgeBandingRow item, boolean empty) {
                 super.updateItem(item, empty);
                 setText(empty || item == null ? null : edgeBandingName(item));
             }
@@ -318,7 +318,7 @@ public class PricingController implements Initializable {
         MaterialRow material = materialComboBox.getValue();
         boolean hasEdges = topEdgeCheckBox.isSelected() || bottomEdgeCheckBox.isSelected()
                 || leftEdgeCheckBox.isSelected() || rightEdgeCheckBox.isSelected();
-        EdgeBandingEntity edgeBanding = edgeBandingComboBox.getValue();
+        EdgeBandingRow edgeBanding = edgeBandingComboBox.getValue();
         if (isBlank(nameField.getText()) || length == null || width == null
                 || length.signum() <= 0 || width.signum() <= 0
                 || quantity == null || quantity <= 0 || material == null
@@ -352,7 +352,7 @@ public class PricingController implements Initializable {
                 ? null : editing.getProjectWorkpieceId();
         ProjectWorkpieceData data = new ProjectWorkpieceData(
                 project.id(), nameField.getText().trim(), length, width, quantity,
-                material.id(), edgeBanding == null ? null : edgeBanding.getId(),
+                material.id(), edgeBanding == null ? null : edgeBanding.id(),
                 topEdgeCheckBox.isSelected(), bottomEdgeCheckBox.isSelected(),
                 leftEdgeCheckBox.isSelected(), rightEdgeCheckBox.isSelected());
         taskRunner.execute(() -> PricingWorkpiece.fromProject(projectWorkpieceId == null
@@ -410,7 +410,7 @@ public class PricingController implements Initializable {
         String selectedMaterialId = materialComboBox.getValue() == null
                 ? null : materialComboBox.getValue().id();
         String selectedEdgeBandingId = edgeBandingComboBox.getValue() == null
-                ? null : edgeBandingComboBox.getValue().getId();
+                ? null : edgeBandingComboBox.getValue().id();
         String selectedHardwareId = hardwareComboBox.getValue() == null
                 ? null : hardwareComboBox.getValue().id();
         restoringDraft = true;
@@ -425,7 +425,7 @@ public class PricingController implements Initializable {
                     materialComboBox);
             edgeBandings = List.copyOf(data.edgeBandings());
             edgeBandingComboBox.setItems(FXCollections.observableArrayList(edgeBandings));
-            selectById(edgeBandings, selectedEdgeBandingId, EdgeBandingEntity::getId,
+            selectById(edgeBandings, selectedEdgeBandingId, EdgeBandingRow::id,
                     edgeBandingComboBox);
             hardwares = List.copyOf(data.hardwares());
             hardwareComboBox.setItems(FXCollections.observableArrayList(hardwares));
@@ -569,7 +569,7 @@ public class PricingController implements Initializable {
                                 item.getLengthMm(), item.getWidthMm(), item.getQuantity(),
                                 item.getMaterial().id(),
                                 item.getEdgeBanding() == null ? null
-                                        : item.getEdgeBanding().getId(),
+                                        : item.getEdgeBanding().id(),
                                 item.isEdgeTop(), item.isEdgeBottom(),
                                 item.isEdgeLeft(), item.isEdgeRight()))
                         .toList(),
@@ -619,11 +619,11 @@ public class PricingController implements Initializable {
                         new IllegalStateException("Draft material is no longer available"));
     }
 
-    private EdgeBandingEntity findEdgeBanding(String id) {
+    private EdgeBandingRow findEdgeBanding(String id) {
         if (id == null) {
             return null;
         }
-        return edgeBandings.stream().filter(edge -> edge.getId().equals(id))
+        return edgeBandings.stream().filter(edge -> edge.id().equals(id))
                 .findFirst().orElseThrow(() ->
                         new IllegalStateException("Draft edge banding is no longer available"));
     }
@@ -641,7 +641,7 @@ public class PricingController implements Initializable {
     private record PricingViewData(
             List<SalesProjectRow> projects,
             List<MaterialRow> materials,
-            List<EdgeBandingEntity> edgeBandings,
+            List<EdgeBandingRow> edgeBandings,
             List<HardwareRow> hardwares,
             java.util.Optional<EstimateDraftData> draft
     ) {
@@ -699,7 +699,7 @@ public class PricingController implements Initializable {
             edgeBandingComboBox.getSelectionModel().clearSelection();
         } else {
             edgeBandings.stream()
-                    .filter(edge -> edge.getId().equals(workpiece.getEdgeBanding().getId()))
+                    .filter(edge -> edge.id().equals(workpiece.getEdgeBanding().id()))
                     .findFirst().ifPresent(edgeBandingComboBox.getSelectionModel()::select);
         }
         topEdgeCheckBox.setSelected(workpiece.isEdgeTop());
@@ -868,9 +868,9 @@ public class PricingController implements Initializable {
                 material.widthMm().doubleValue(), material.pricePerSheet().doubleValue());
     }
 
-    private EdgeBanding toCore(EdgeBandingEntity entity) {
-        return new EdgeBanding(entity.getId(), entity.getName(),
-                entity.getWidthMm().doubleValue(), entity.getPricePerMeter().doubleValue());
+    private EdgeBanding toCore(EdgeBandingRow edgeBanding) {
+        return new EdgeBanding(edgeBanding.id(), edgeBanding.name(),
+                edgeBanding.widthMm().doubleValue(), edgeBanding.pricePerMeter().doubleValue());
     }
 
     private Hardware toCore(HardwareRow hardware) {
@@ -919,8 +919,8 @@ public class PricingController implements Initializable {
                 + formatDimension(material.thicknessMm()) + " mm";
     }
 
-    private String edgeBandingName(EdgeBandingEntity edgeBanding) {
-        return edgeBanding.getName() + " · " + formatDimension(edgeBanding.getWidthMm())
+    private String edgeBandingName(EdgeBandingRow edgeBanding) {
+        return edgeBanding.name() + " · " + formatDimension(edgeBanding.widthMm())
                 + " mm";
     }
 

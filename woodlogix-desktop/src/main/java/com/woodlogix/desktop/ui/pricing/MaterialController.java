@@ -1,6 +1,6 @@
 package com.woodlogix.desktop.ui.pricing;
 
-import com.woodlogix.desktop.persistence.entity.EdgeBandingEntity;
+import com.woodlogix.application.edgebanding.EdgeBandingRow;
 import com.woodlogix.application.hardware.HardwareRow;
 import com.woodlogix.application.material.MaterialRow;
 import com.woodlogix.desktop.service.EdgeBandingData;
@@ -72,7 +72,7 @@ public class MaterialController implements Initializable {
     private final TextField edgeBandingPriceField = new TextField();
     private final Button edgeBandingSaveButton = new Button();
     private final Button edgeBandingCancelButton = new Button();
-    private final TableView<EdgeBandingEntity> edgeBandingTable = new TableView<>();
+    private final TableView<EdgeBandingRow> edgeBandingTable = new TableView<>();
 
     private final TextField hardwareNameField = new TextField();
     private final TextField hardwareUnitField = new TextField();
@@ -205,14 +205,14 @@ public class MaterialController implements Initializable {
     }
 
     private void configureEdgeBandingTable() {
-        TableColumn<EdgeBandingEntity, String> name = column(
-                "materials.name", item -> item.getName());
-        TableColumn<EdgeBandingEntity, String> width = column(
-                "materials.width", item -> format(item.getWidthMm()));
-        TableColumn<EdgeBandingEntity, String> price = column(
+        TableColumn<EdgeBandingRow, String> name = column(
+                "materials.name", item -> item.name());
+        TableColumn<EdgeBandingRow, String> width = column(
+                "materials.width", item -> format(item.widthMm()));
+        TableColumn<EdgeBandingRow, String> price = column(
                 "materials.price-per-meter",
-                item -> currency(item.getPricePerMeter()) + " / m");
-        TableColumn<EdgeBandingEntity, Void> actions = actionColumn(
+                item -> currency(item.pricePerMeter()) + " / m");
+        TableColumn<EdgeBandingRow, Void> actions = actionColumn(
                 this::editEdgeBanding, this::deleteEdgeBanding);
         edgeBandingTable.getColumns().setAll(name, width, price, actions);
         edgeBandingTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
@@ -358,11 +358,11 @@ public class MaterialController implements Initializable {
         materialCancelButton.setManaged(true);
     }
 
-    private void editEdgeBanding(EdgeBandingEntity edgeBanding) {
-        editingEdgeBandingId = edgeBanding.getId();
-        edgeBandingNameField.setText(edgeBanding.getName());
-        edgeBandingWidthField.setText(format(edgeBanding.getWidthMm()));
-        edgeBandingPriceField.setText(format(edgeBanding.getPricePerMeter()));
+    private void editEdgeBanding(EdgeBandingRow edgeBanding) {
+        editingEdgeBandingId = edgeBanding.id();
+        edgeBandingNameField.setText(edgeBanding.name());
+        edgeBandingWidthField.setText(format(edgeBanding.widthMm()));
+        edgeBandingPriceField.setText(format(edgeBanding.pricePerMeter()));
         edgeBandingSaveButton.setText(text("action.save"));
         edgeBandingCancelButton.setVisible(true);
         edgeBandingCancelButton.setManaged(true);
@@ -392,13 +392,13 @@ public class MaterialController implements Initializable {
         }, message -> statusLabel.setText(message));
     }
 
-    private void deleteEdgeBanding(EdgeBandingEntity edgeBanding) {
+    private void deleteEdgeBanding(EdgeBandingRow edgeBanding) {
         if (!UiTaskRunner.confirm(format("dialog.confirm-delete-edgebanding",
-                edgeBanding.getName()), messages)) {
+                edgeBanding.name()), messages)) {
             return;
         }
         taskRunner.execute(() -> {
-            edgeBandingService.delete(edgeBanding.getId());
+            edgeBandingService.delete(edgeBanding.id());
             return null;
         }, messages, ignored -> {
             statusLabel.setText(text("status.edgebanding-deleted"));
