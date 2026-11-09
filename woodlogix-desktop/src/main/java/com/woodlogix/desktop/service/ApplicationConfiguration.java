@@ -3,6 +3,8 @@ package com.woodlogix.desktop.service;
 import com.woodlogix.application.customer.CustomerCatalog;
 import com.woodlogix.application.customer.CustomerCatalogPort;
 import com.woodlogix.application.customer.CustomerChangeNotifier;
+import com.woodlogix.application.draft.EstimateDraft;
+import com.woodlogix.application.draft.EstimateDraftPort;
 import com.woodlogix.application.edgebanding.EdgeBandingCatalog;
 import com.woodlogix.application.edgebanding.EdgeBandingCatalogPort;
 import com.woodlogix.application.environment.EnvironmentCatalog;
@@ -68,5 +70,10 @@ public class ApplicationConfiguration {
     public ProjectWorkpiece projectWorkpiece(ProjectWorkpiecePort workpieces,
                                              TransactionPort transactions) {
         return new ProjectWorkpiece(workpieces, transactions);
+    }
+
+    @Bean
+    public EstimateDraft estimateDraft(EstimateDraftPort drafts, TransactionPort transactions) {
+        return new EstimateDraft(drafts, transactions);
     }
 }

@@ -1,10 +1,12 @@
 package com.woodlogix.desktop.ui.pricing;
 
 import com.woodlogix.application.edgebanding.EdgeBandingRow;
+import com.woodlogix.application.hardware.HardwareRow;
 import com.woodlogix.application.material.MaterialRow;
 import com.woodlogix.application.sales.SalesProjectRow;
 import com.woodlogix.application.workpiece.ProjectWorkpieceRow;
 import com.woodlogix.core.enums.SalesStage;
+import com.woodlogix.core.model.HardwareUsage;
 import com.woodlogix.desktop.service.*;
 import com.woodlogix.desktop.ui.UiTaskRunner;
 import javafx.application.Platform;
@@ -221,6 +223,27 @@ class PricingControllerMaterialTest {
             assertNotNull(restored);
             assertEquals("edge", restored.workpieces().get(0).edgeBandingId());
             assertNull(restored.workpieces().get(1).edgeBandingId());
+            return null;
+        });
+    }
+
+    @Test
+    void restoresHardwareUsageUsingCurrentCatalogValue() throws Exception {
+        fx(() -> {
+            var currentHardware = new HardwareRow("hinge", "Current hinge", "PAIR", bd("25"));
+            ReflectionTestUtils.setField(controller, "hardwares", List.of(currentHardware));
+            var saved = new EstimateDraftData(null, bd("1"), bd("2"), bd("3"), bd("4"), bd("5"),
+                    List.of(), List.of(new EstimateDraftData.EstimateDraftHardwareData("hinge", 2)));
+
+            ReflectionTestUtils.invokeMethod(controller, "restoreDraft", saved);
+
+            @SuppressWarnings("unchecked")
+            var usages = (List<HardwareUsage>) ReflectionTestUtils.getField(
+                    controller, "hardwareUsages");
+            assertEquals(1, usages.size());
+            assertEquals("Current hinge", usages.get(0).getHardware().getName());
+            assertEquals(25.0, usages.get(0).getHardware().getUnitPrice());
+            assertEquals(2, usages.get(0).getQuantity());
             return null;
         });
     }

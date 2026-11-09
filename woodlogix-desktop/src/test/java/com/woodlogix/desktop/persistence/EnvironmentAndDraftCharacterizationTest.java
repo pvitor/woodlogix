@@ -1,6 +1,9 @@
 package com.woodlogix.desktop.persistence;
 
 import com.woodlogix.desktop.WoodLogixApplication;
+import com.woodlogix.application.draft.EstimateDraft;
+import com.woodlogix.application.draft.EstimateDraftInput;
+import com.woodlogix.application.draft.EstimateDraftPort;
 import com.woodlogix.desktop.persistence.entity.EstimateDraftEntity;
 import com.woodlogix.desktop.persistence.entity.ProjectEnvironmentEntity;
 import com.woodlogix.desktop.persistence.repository.EstimateDraftRepository;
@@ -33,7 +36,6 @@ import org.springframework.boot.builder.SpringApplicationBuilder;
 import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.orm.jpa.EntityManagerFactoryUtils;
-import org.springframework.test.util.AopTestUtils;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
@@ -270,14 +272,14 @@ class EnvironmentAndDraftCharacterizationTest {
         assertEquals(1, hardwaresBefore.size());
         var oldPieces = childIds("project_estimate_workpieces");
         var oldHardwares = childIds("project_estimate_hardwares");
-        var realRepository = context.getBean(EstimateDraftRepository.class);
-        var intercepted = mock(EstimateDraftRepository.class, delegatesTo(realRepository));
-        var target = AopTestUtils.<EstimateDraftService>getUltimateTargetObject(service);
+        var realPort = context.getBean(EstimateDraftPort.class);
+        var intercepted = mock(EstimateDraftPort.class, delegatesTo(realPort));
+        var useCase = context.getBean(EstimateDraft.class);
         var observedWrite = new AtomicBoolean();
 
         doAnswer(invocation -> {
-            EstimateDraftEntity entity = invocation.getArgument(0);
-            realRepository.saveAndFlush(entity);
+            EstimateDraftInput input = invocation.getArgument(0);
+            realPort.saveActiveDraftAndFlush(input);
             assertEquals(0L, transactionalCount(
                     "SELECT COUNT(w) FROM EstimateDraftWorkpieceEntity w WHERE w.id = ?1",
                     oldPieces.get(0)));
@@ -291,15 +293,15 @@ class EnvironmentAndDraftCharacterizationTest {
                     "SELECT COUNT(h) FROM EstimateDraftHardwareEntity h WHERE h.quantity = ?1", 9));
             observedWrite.set(true);
             throw new IllegalStateException("injected draft failure");
-        }).when(intercepted).saveAndFlush(any());
+        }).when(intercepted).saveActiveDraftAndFlush(any());
 
-        ReflectionTestUtils.setField(target, "draftRepository", intercepted);
+        ReflectionTestUtils.setField(useCase, "drafts", intercepted);
         try {
             var failure = assertThrows(IllegalStateException.class, () ->
                     service.saveActiveDraft(replacementDraft(fixture)));
             assertEquals("injected draft failure", failure.getMessage());
         } finally {
-            ReflectionTestUtils.setField(target, "draftRepository", realRepository);
+            ReflectionTestUtils.setField(useCase, "drafts", realPort);
         }
 
         assertTrue(observedWrite.get());
