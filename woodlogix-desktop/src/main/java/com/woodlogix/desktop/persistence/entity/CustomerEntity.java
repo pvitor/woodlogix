@@ -1,5 +1,6 @@
 package com.woodlogix.desktop.persistence.entity;
 
+import com.woodlogix.application.customer.CustomerInput;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -55,7 +56,7 @@ public class CustomerEntity {
     }
 
     public void update(String fullName, String phone, String email, String address) {
-        this.fullName = requireText(fullName, "fullName");
+        this.fullName = new CustomerInput(fullName, phone, email, address).fullName();
         this.phone = phone;
         this.email = email;
         this.address = address;

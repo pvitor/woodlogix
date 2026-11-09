@@ -1,18 +1,17 @@
 package com.woodlogix.desktop.service;
 
+import com.woodlogix.application.customer.CustomerCatalog;
+import com.woodlogix.application.customer.CustomerInput;
+import com.woodlogix.application.customer.CustomerNotFoundException;
+import com.woodlogix.application.customer.CustomerRow;
+import com.woodlogix.desktop.persistence.SqliteIntegrityErrors;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.validation.Valid;
-import com.woodlogix.desktop.persistence.entity.CustomerEntity;
-import com.woodlogix.desktop.persistence.SqliteIntegrityErrors;
-import com.woodlogix.desktop.persistence.repository.CustomerRepository;
-import com.woodlogix.desktop.service.event.CustomerChangedEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.stereotype.Service;
-import org.springframework.context.ApplicationEventPublisher;
-import org.springframework.transaction.annotation.Transactional;
-import org.springframework.validation.annotation.Validated;
 import org.springframework.dao.DataAccessException;
+import org.springframework.stereotype.Service;
+import org.springframework.validation.annotation.Validated;
 
 import java.util.List;
 import java.util.Objects;
@@ -22,79 +21,45 @@ import java.util.Objects;
 public class CustomerService {
     private static final Logger LOGGER = LoggerFactory.getLogger(CustomerService.class);
 
-    private final CustomerRepository customerRepository;
-    private final ApplicationEventPublisher eventPublisher;
+    private final CustomerCatalog catalog;
 
-    public CustomerService(
-            CustomerRepository customerRepository, ApplicationEventPublisher eventPublisher
-    ) {
-        this.customerRepository = Objects.requireNonNull(
-                customerRepository, "customerRepository must not be null"
-        );
-        this.eventPublisher = Objects.requireNonNull(eventPublisher);
+    public CustomerService(CustomerCatalog catalog) {
+        this.catalog = Objects.requireNonNull(catalog);
     }
 
-    @Transactional(readOnly = true)
     public List<CustomerRow> findAll() {
-        return customerRepository.findAll().stream()
-                .map(this::toRow)
-                .toList();
+        return catalog.findAll();
     }
 
-    @Transactional(readOnly = true)
     public List<CustomerRow> search(String searchTerm) {
-        if (searchTerm == null || searchTerm.isBlank()) {
-            return findAll();
-        }
-        String term = searchTerm.trim();
-        return customerRepository
-                .findByFullNameContainingIgnoreCaseOrEmailContainingIgnoreCaseOrPhoneContainingIgnoreCase(
-                        term, term, term
-                )
-                .stream()
-                .map(this::toRow)
-                .toList();
+        return catalog.search(searchTerm);
     }
 
-    @Transactional(readOnly = true)
     public List<CustomerRow> findByName(String name) {
-        if (name == null || name.isBlank()) {
-            return findAll();
-        }
-        return customerRepository.findByFullNameContainingIgnoreCase(name.trim()).stream()
-                .map(this::toRow)
-                .toList();
+        return catalog.findByName(name);
     }
 
-    @Transactional
     public CustomerRow create(@Valid CustomerData data) {
-        CustomerEntity customer = customerRepository.saveAndFlush(
-                new CustomerEntity(data.fullName(), data.phone(), data.email(), data.address())
-        );
-        eventPublisher.publishEvent(new CustomerChangedEvent());
+        CustomerRow customer = catalog.create(toInput(data));
         LOGGER.info("Customer registered");
-        return toRow(customer);
+        return customer;
     }
 
-    @Transactional
     public CustomerRow update(String customerId, @Valid CustomerData data) {
-        CustomerEntity customer = customerRepository.findById(customerId)
-                .orElseThrow(() -> new EntityNotFoundException("error.customer-not-found"));
-        customer.update(data.fullName(), data.phone(), data.email(), data.address());
-        CustomerEntity updated = customerRepository.saveAndFlush(customer);
-        eventPublisher.publishEvent(new CustomerChangedEvent());
-        LOGGER.info("Customer updated");
-        return toRow(updated);
+        try {
+            CustomerRow customer = catalog.update(customerId, toInput(data));
+            LOGGER.info("Customer updated");
+            return customer;
+        } catch (CustomerNotFoundException exception) {
+            throw new EntityNotFoundException(exception.getMessage(), exception);
+        }
     }
 
-    @Transactional
     public void delete(String customerId) {
-        if (!customerRepository.existsById(customerId)) {
-            throw new EntityNotFoundException("error.customer-not-found");
-        }
         try {
-            customerRepository.deleteById(customerId);
-            customerRepository.flush();
+            catalog.delete(customerId);
+        } catch (CustomerNotFoundException exception) {
+            throw new EntityNotFoundException(exception.getMessage(), exception);
         } catch (DataAccessException exception) {
             if (!SqliteIntegrityErrors.isForeignKeyViolation(exception)) {
                 throw exception;
@@ -102,12 +67,10 @@ public class CustomerService {
             LOGGER.warn("Customer deletion rejected because related records exist", exception);
             throw new IllegalStateException("error.customer-has-related-records", exception);
         }
-        eventPublisher.publishEvent(new CustomerChangedEvent());
         LOGGER.info("Customer deleted");
     }
 
-    private CustomerRow toRow(CustomerEntity customer) {
-        return new CustomerRow(customer.getId(), customer.getFullName(), customer.getPhone(),
-                customer.getEmail(), customer.getAddress());
+    private static CustomerInput toInput(CustomerData data) {
+        return new CustomerInput(data.fullName(), data.phone(), data.email(), data.address());
     }
 }

@@ -1,5 +1,8 @@
 package com.woodlogix.desktop.service;
 
+import com.woodlogix.application.customer.CustomerCatalog;
+import com.woodlogix.application.customer.CustomerCatalogPort;
+import com.woodlogix.application.customer.CustomerChangeNotifier;
 import com.woodlogix.application.edgebanding.EdgeBandingCatalog;
 import com.woodlogix.application.edgebanding.EdgeBandingCatalogPort;
 import com.woodlogix.application.hardware.DeleteHardware;
@@ -14,6 +17,13 @@ import org.springframework.context.annotation.Configuration;
 
 @Configuration
 public class ApplicationConfiguration {
+    @Bean
+    public CustomerCatalog customerCatalog(CustomerCatalogPort customers,
+                                           CustomerChangeNotifier notifier,
+                                           TransactionPort transactions) {
+        return new CustomerCatalog(customers, notifier, transactions);
+    }
+
     @Bean
     public EdgeBandingCatalog edgeBandingCatalog(EdgeBandingCatalogPort edgeBandings,
                                                  TransactionPort transactions) {

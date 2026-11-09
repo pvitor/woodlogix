@@ -1,7 +1,7 @@
 package com.woodlogix.desktop.ui.environment;
 
 import com.woodlogix.core.enums.RoomType;
-import com.woodlogix.desktop.service.CustomerRow;
+import com.woodlogix.application.customer.CustomerRow;
 import com.woodlogix.desktop.service.CustomerService;
 import com.woodlogix.desktop.service.EnvironmentRow;
 import com.woodlogix.desktop.service.EnvironmentService;

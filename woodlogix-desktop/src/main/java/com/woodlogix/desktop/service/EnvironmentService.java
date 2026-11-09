@@ -1,5 +1,6 @@
 package com.woodlogix.desktop.service;
 
+import com.woodlogix.application.customer.CustomerRow;
 import com.woodlogix.core.enums.RoomType;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.validation.Valid;

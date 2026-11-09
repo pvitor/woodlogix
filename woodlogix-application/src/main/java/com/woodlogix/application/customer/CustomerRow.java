@@ -1,4 +1,4 @@
-package com.woodlogix.desktop.service;
+package com.woodlogix.application.customer;
 
 public record CustomerRow(String id, String fullName, String phone, String email, String address) {
     @Override

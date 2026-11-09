@@ -1,7 +1,7 @@
 package com.woodlogix.desktop.ui.client;
 
 import com.woodlogix.desktop.service.CustomerData;
-import com.woodlogix.desktop.service.CustomerRow;
+import com.woodlogix.application.customer.CustomerRow;
 import com.woodlogix.desktop.service.CustomerService;
 import com.woodlogix.desktop.service.event.CustomerChangedEvent;
 import com.woodlogix.desktop.ui.UiTaskRunner;

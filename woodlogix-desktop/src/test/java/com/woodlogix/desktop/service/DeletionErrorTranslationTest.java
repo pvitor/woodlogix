@@ -1,5 +1,9 @@
 package com.woodlogix.desktop.service;
 
+import com.woodlogix.application.customer.CustomerCatalog;
+import com.woodlogix.application.transaction.TransactionPort;
+import com.woodlogix.desktop.persistence.CustomerCatalogAdapter;
+import com.woodlogix.desktop.persistence.CustomerChangeNotifierAdapter;
 import com.woodlogix.desktop.persistence.SqliteIntegrityErrors;
 import com.woodlogix.desktop.persistence.entity.CustomerEntity;
 import com.woodlogix.desktop.persistence.entity.ProjectEnvironmentEntity;
@@ -16,6 +20,7 @@ import org.springframework.dao.DataIntegrityViolationException;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.function.Supplier;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertSame;
@@ -26,6 +31,12 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 class DeletionErrorTranslationTest {
+    private static class DirectTransactions implements TransactionPort {
+        public void execute(Runnable operation) { operation.run(); }
+        public <T> T executeWithResult(Supplier<T> operation) { return operation.get(); }
+        public <T> T executeReadOnly(Supplier<T> operation) { return operation.get(); }
+    }
+
     @Test
     void recognizesOnlyTheExtendedForeignKeyCodeInTheCauseChain() {
         assertTrue(SqliteIntegrityErrors.isForeignKeyViolation(new RuntimeException(
@@ -44,7 +55,9 @@ class DeletionErrorTranslationTest {
         var customerRepository = mock(CustomerRepository.class);
         var environmentRepository = mock(ProjectEnvironmentRepository.class);
         var events = mock(ApplicationEventPublisher.class);
-        var customers = new CustomerService(customerRepository, events);
+        var customers = new CustomerService(new CustomerCatalog(
+                new CustomerCatalogAdapter(customerRepository),
+                new CustomerChangeNotifierAdapter(events), new DirectTransactions()));
         var environments = new EnvironmentService(customerRepository, environmentRepository,
                 mock(FurnitureItemRepository.class), mock(FurniturePartRepository.class),
                 mock(SalesProjectRepository.class), events);
