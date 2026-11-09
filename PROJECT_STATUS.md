@@ -1,6 +1,6 @@
 # WoodLogix — estado do projeto
 
-**Referência:** branch `feature/arquitetura-nova` (extração do rascunho ativo em andamento, não commitada).
+**Referência:** branch `feature/arquitetura-nova` (módulo Server estrutural criado, ainda não commitado).
 
 **Verificação de testes registrada em:** 9 nov. 2026.
 
@@ -19,7 +19,7 @@ O problema que pretende resolver é a dispersão de informações operacionais e
 | Java 17 | Versão de compilação configurada no Maven e usada na execução JavaFX verificada. |
 | Maven | Build multi-módulo; artefatos versionados como `1.1.0-SNAPSHOT`. |
 | JavaFX / FXML / CSS | Aplicação desktop e suas telas; JavaFX `17.0.2`. |
-| Spring Boot | Contexto local embutido, versão `3.5.16`, sem aplicação web (`spring.main.web-application-type=none`). |
+| Spring Boot | Versão `3.5.16`; o Desktop mantém seu contexto local sem web e o Server possui um módulo Web inicial, ainda sem endpoints ou persistência. |
 | Spring Data JPA / Hibernate | Repositórios e persistência; dialeto SQLite via `hibernate-community-dialects`. |
 | SQLite | Banco de dados local, configurável. Driver `sqlite-jdbc` `3.42.0.0`. |
 | Flyway | Migração inicial versionada do schema SQLite; versão `11.7.2` gerenciada pelo Spring Boot. |
@@ -35,6 +35,7 @@ As versões estão declaradas no `pom.xml` raiz e nos POMs dos módulos.
 
 - **`woodlogix-core`** contém modelos de domínio, enums e cálculos (`PricingEngine`, `EdgeBandingCalculator`). Não depende de Spring, JavaFX ou JPA.
 - **`woodlogix-application`** contém os casos de uso dos catálogos de ferragens, materiais e fitas de borda, do cadastro de clientes, do catálogo de ambientes, do pipeline de vendas e do CRUD de peças de projeto, com portas de persistência e transação, sem dependências de Spring, JPA, Jakarta ou JavaFX em produção. Os adaptadores JPA permanecem no Desktop.
+- **`woodlogix-server`** existe como módulo estrutural Spring Boot Web, dependente de Application e Core, sem dependência de Desktop. Contém somente a classe de inicialização; seu POM configura `spring-boot-starter-web` e o plugin Spring Boot `3.5.16` para reempacotamento executável. Ainda não possui endpoints, banco de dados, migrations ou adapters.
 - **`woodlogix-desktop`** contém a aplicação JavaFX, controladores e FXML, serviços de casos de uso, entidades JPA, repositórios Spring Data, configuração SQLite e integração PDF.
 - **Serviços** coordenam operações como CRUD, validações, relações e transações. **Repositórios** estendem interfaces Spring Data JPA; não há DAOs JDBC manuais no fluxo atual.
 - **Integração JavaFX/Spring:** `WoodLogixDesktopLauncher` inicia `AppLauncher`; o contexto Spring é aberto no ciclo de vida JavaFX e encerrado em `stop()`. O `FXMLLoader` obtém controladores pelo contexto.
@@ -49,14 +50,14 @@ A aplicação terá uma única base de código, com casos de uso e regras compar
 
 - **`woodlogix-core`:** domínio e regras puras, sem dependências de infraestrutura.
 - **`woodlogix-application`:** casos de uso, coordenação e portas; depende de Core e não de Spring ou JPA. Casos de uso compostos expressarão atomicidade por uma porta de transação implementada pela infraestrutura.
-- **`woodlogix-server`:** Spring Boot, API HTTP, segurança e adaptadores de persistência; depende de Application e Core, não de Desktop.
+- **`woodlogix-server`:** módulo inicial Spring Boot Web já existe e depende de Application e Core, não de Desktop. Endpoints, segurança e adapters de persistência ainda serão implementados em etapas posteriores.
 - **`woodlogix-desktop`:** JavaFX, apresentação e cliente HTTP.
 
 No **modo individual**, o fluxo aprovado é JavaFX → HTTP → Spring Boot local → SQLite, sem internet ou sincronização entre instalações. A direção é executar o servidor na mesma JVM, restrito a loopback; sua viabilidade, empacotamento e consumo de recursos ainda precisam ser comprovados.
 
 No **modo compartilhado**, JavaFX acessará via HTTP um Spring Boot central na empresa, conectado a PostgreSQL. O acesso não dependerá obrigatoriamente de nuvem ou internet.
 
-Esses fluxos são **decisões de arquitetura, não funcionalidades disponíveis**: Application contém os catálogos de ferragens, materiais e fitas de borda, o cadastro de clientes, o catálogo de ambientes, os casos de uso do pipeline de vendas, o CRUD de peças de projeto e o caso de uso do rascunho ativo; ainda não existem o módulo Server, API/cliente HTTP nem persistência PostgreSQL. A migração prevista manterá o grafo JPA completo em um único módulo até sua transferência coordenada ao Server, seguida do corte dos consumidores JavaFX para HTTP, sem duas fontes de verdade.
+Esses fluxos são **decisões de arquitetura, não funcionalidades disponíveis**: Application contém os casos de uso dos catálogos, clientes, ambientes, pipeline, peças e rascunho ativo; o módulo Server existe apenas estruturalmente, sem endpoints, configuração de persistência ou API/cliente HTTP. Entidades JPA, repositórios, adapters, SQLite e Flyway permanecem no Desktop e serão transferidos em etapas posteriores. PostgreSQL também não está configurado. A migração prevista manterá o grafo JPA completo em um único módulo até sua transferência coordenada ao Server, seguida do corte dos consumidores JavaFX para HTTP, sem duas fontes de verdade.
 
 ## 4. Funcionalidades
 
@@ -91,6 +92,20 @@ O consumo de chapas é **estimativa por área**, não otimização de corte: o c
 Executado para este registro:
 
 ```text
+mvn -o -pl woodlogix-server -am '-Dtest=WoodLogixServerApplicationTest' '-Dsurefire.failIfNoSpecifiedTests=false' test
+BUILD SUCCESS
+1 teste: contexto Spring Boot iniciado com Tomcat em porta aleatória, sem banco de dados
+
+mvn -o test
+BUILD SUCCESS
+183 testes (core 7, application 59, server 1, desktop 116): 0 falhas, 0 erros, 0 ignorados
+
+mvn -o -pl woodlogix-server -am -DskipTests package
+BUILD FAILURE
+Reempacotamento não concluído: dependências do spring-boot-maven-plugin ausentes do cache offline
+  (incluindo spring-boot-buildpack-platform:3.5.16 e spring-boot-loader-tools:3.5.16)
+Não foi verificado um JAR executável; não alteramos versões nem tentamos baixar dependências
+
 mvn -o -pl woodlogix-desktop -am '-Dtest=EnvironmentAndSalesPipelineServiceTest,DeletionErrorTranslationTest,EnvironmentCatalogIntegrationTest,DeletionAndPipelineCharacterizationTest,PersistenceRepositoryTest' '-Dsurefire.failIfNoSpecifiedTests=false' test
 BUILD SUCCESS
 57 testes selecionados no Desktop: 0 falhas, 0 erros, 0 ignorados
@@ -130,6 +145,7 @@ Grupos existentes:
 - `woodlogix-desktop/.../PersistenceRepositoryTest.java` — 22 testes de integração com Spring e SQLite temporário (`@TempDir`), cobrindo persistência de relações, CRUD e restrições de clientes, ambientes, insumos, ferragens, peças de projeto e rascunho; também pesquisa, dados inválidos, movimento de projeto e exportação PDF.
 - `woodlogix-desktop/.../ProjectWorkpieceIntegrationTest.java` — 5 testes em SQLite temporário migrado com Flyway: criação/atualização/ordenação e mapeamento de rows, valores atuais dos catálogos, validação e IDs inexistentes, rollback após flush e tradução da falha de integridade na exclusão sem conversão de outras falhas.
 - `woodlogix-desktop/.../ProposalPdfServiceTest.java` — 4 testes de conteúdo/exportação PDF e mensagens/currency em inglês e espanhol.
+- `woodlogix-server/.../WoodLogixServerApplicationTest.java` — inicia o contexto com `RANDOM_PORT` e confirma que um servidor HTTP embarcado recebeu uma porta, sem configurar ou exigir banco de dados.
 - `woodlogix-desktop/.../ConfigLoaderTest.java` — 1 teste de configuração externa.
 - `woodlogix-desktop/.../DeletionAndPipelineCharacterizationTest.java` — 16 testes de caracterização em SQLite temporário: exclusões com FKs reais, associações do pipeline, ordenação por etapa/data, movimentação sem alterar outros campos e rollback de criação após flush.
 - `woodlogix-desktop/.../EnvironmentAndDraftCharacterizationTest.java` — caracteriza sincronização de ambientes e rascunhos; cobre referências ausentes, validações, projeto opcional, fita ausente/obrigatória, substituição de filhos, listas vazias e rollback após flush real com SQLite temporário migrado via Flyway.
