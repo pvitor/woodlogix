@@ -14,7 +14,6 @@ import com.woodlogix.desktop.persistence.entity.HardwareEntity;
 import com.woodlogix.desktop.persistence.entity.LocalDateTimeText;
 import com.woodlogix.desktop.persistence.entity.MaterialEntity;
 import com.woodlogix.desktop.persistence.entity.MaterialTypeConverter;
-import com.woodlogix.desktop.persistence.entity.ProjectWorkpieceEntity;
 import com.woodlogix.desktop.persistence.entity.ProjectEnvironmentEntity;
 import com.woodlogix.desktop.persistence.repository.CustomerRepository;
 import com.woodlogix.desktop.persistence.repository.FurnitureItemRepository;
@@ -171,9 +170,9 @@ class PersistenceRepositoryTest {
         assertEquals(1, edgeBandingService.findAll().size());
         assertEquals(1, hardwareService.findAll().size());
         assertEquals(1, workpieceService.findByProject(project.id()).size());
-        assertEquals(project.id(), workpiece.getProject().getId());
-        assertEquals(material.id(), workpiece.getMaterial().getId());
-        assertEquals(edgeBanding.id(), workpiece.getEdgeBanding().getId());
+        assertEquals(project.id(), workpiece.projectId());
+        assertEquals(material.id(), workpiece.material().id());
+        assertEquals(edgeBanding.id(), workpiece.edgeBanding().id());
         assertThrows(IllegalStateException.class, () -> materialService.delete(material.id()));
         assertThrows(IllegalStateException.class,
                 () -> edgeBandingService.delete(edgeBanding.id()));
@@ -185,7 +184,7 @@ class PersistenceRepositoryTest {
                 "PVC premium", new BigDecimal("22"), new BigDecimal("4.00")));
         hardwareService.update(hardware.id(), new HardwareData(
                 "Soft-close hinge", "PAIR", new BigDecimal("15.00")));
-        workpieceService.update(workpiece.getId(), new ProjectWorkpieceData(
+        workpieceService.update(workpiece.id(), new ProjectWorkpieceData(
                 project.id(), "Updated door panel", new BigDecimal("710"),
                 new BigDecimal("510"), 3, material.id(), edgeBanding.id(),
                 true, false, false, true));
@@ -194,9 +193,9 @@ class PersistenceRepositoryTest {
         assertEquals("PVC premium", edgeBandingService.findAll().get(0).name());
         assertEquals("Soft-close hinge", hardwareService.findAll().get(0).name());
         assertEquals("Updated door panel",
-                workpieceService.findByProject(project.id()).get(0).getName());
+                workpieceService.findByProject(project.id()).get(0).name());
 
-        workpieceService.delete(workpiece.getId());
+        workpieceService.delete(workpiece.id());
         materialService.delete(material.id());
         edgeBandingService.delete(edgeBanding.id());
         hardwareService.delete(hardware.id());

@@ -2,9 +2,7 @@ package com.woodlogix.desktop.ui.pricing;
 
 import com.woodlogix.application.edgebanding.EdgeBandingRow;
 import com.woodlogix.application.material.MaterialRow;
-import com.woodlogix.desktop.persistence.entity.EdgeBandingEntity;
-import com.woodlogix.desktop.persistence.entity.MaterialEntity;
-import com.woodlogix.desktop.persistence.entity.ProjectWorkpieceEntity;
+import com.woodlogix.application.workpiece.ProjectWorkpieceRow;
 import lombok.Getter;
 
 import java.math.BigDecimal;
@@ -41,14 +39,9 @@ final class PricingWorkpiece {
         this.edgeRight = edgeRight;
     }
 
-    static PricingWorkpiece fromProject(ProjectWorkpieceEntity piece) {
-        MaterialEntity material = piece.getMaterial();
-        EdgeBandingEntity edgeBanding = piece.getEdgeBanding();
-        return new PricingWorkpiece(piece.getId(), piece.getName(), piece.getLengthMm(), piece.getWidthMm(),
-                piece.getQuantity(), new MaterialRow(material.getId(), material.getName(), material.getColor(),
-                material.getThicknessMm(), material.getLengthMm(), material.getWidthMm(), material.getPricePerSheet()),
-                edgeBanding == null ? null : new EdgeBandingRow(edgeBanding.getId(), edgeBanding.getName(),
-                        edgeBanding.getWidthMm(), edgeBanding.getPricePerMeter()),
-                piece.isEdgeTop(), piece.isEdgeBottom(), piece.isEdgeLeft(), piece.isEdgeRight());
+    static PricingWorkpiece fromProject(ProjectWorkpieceRow piece) {
+        return new PricingWorkpiece(piece.id(), piece.name(), piece.lengthMm(), piece.widthMm(),
+                piece.quantity(), piece.material(), piece.edgeBanding(), piece.edgeTop(),
+                piece.edgeBottom(), piece.edgeLeft(), piece.edgeRight());
     }
 }

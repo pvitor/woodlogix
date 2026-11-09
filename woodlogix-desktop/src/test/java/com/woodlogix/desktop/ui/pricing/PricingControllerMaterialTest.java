@@ -3,10 +3,8 @@ package com.woodlogix.desktop.ui.pricing;
 import com.woodlogix.application.edgebanding.EdgeBandingRow;
 import com.woodlogix.application.material.MaterialRow;
 import com.woodlogix.application.sales.SalesProjectRow;
+import com.woodlogix.application.workpiece.ProjectWorkpieceRow;
 import com.woodlogix.core.enums.SalesStage;
-import com.woodlogix.desktop.persistence.entity.EdgeBandingEntity;
-import com.woodlogix.desktop.persistence.entity.MaterialEntity;
-import com.woodlogix.desktop.persistence.entity.ProjectWorkpieceEntity;
 import com.woodlogix.desktop.service.*;
 import com.woodlogix.desktop.ui.UiTaskRunner;
 import javafx.application.Platform;
@@ -137,24 +135,8 @@ class PricingControllerMaterialTest {
 
     @Test
     void savesProjectPieceAndMapsMaterialOutsideFxThread() throws Exception {
-        var materialEntity = mock(MaterialEntity.class);
-        when(materialEntity.getId()).thenAnswer(invocation -> {
-            assertFalse(Platform.isFxApplicationThread());
-            return "material";
-        });
-        when(materialEntity.getName()).thenReturn("MDF");
-        when(materialEntity.getColor()).thenReturn("White");
-        when(materialEntity.getThicknessMm()).thenReturn(bd("18"));
-        when(materialEntity.getLengthMm()).thenReturn(bd("1000"));
-        when(materialEntity.getWidthMm()).thenReturn(bd("1000"));
-        when(materialEntity.getPricePerSheet()).thenReturn(bd("100"));
-        var projectPiece = mock(ProjectWorkpieceEntity.class);
-        when(projectPiece.getId()).thenReturn("piece");
-        when(projectPiece.getName()).thenReturn("Panel");
-        when(projectPiece.getLengthMm()).thenReturn(bd("100"));
-        when(projectPiece.getWidthMm()).thenReturn(bd("200"));
-        when(projectPiece.getQuantity()).thenReturn(2);
-        when(projectPiece.getMaterial()).thenReturn(materialEntity);
+        var projectPiece = new ProjectWorkpieceRow("piece", "project", "Panel", bd("100"),
+                bd("200"), 2, original, null, false, false, false, false);
         when(pieces.create(any())).thenAnswer(invocation -> {
             assertFalse(Platform.isFxApplicationThread());
             ProjectWorkpieceData data = invocation.getArgument(0);
@@ -245,30 +227,12 @@ class PricingControllerMaterialTest {
 
     @Test
     void mapsProjectPieceEdgeBandingOnlyWhenPresent() {
-        var materialEntity = mock(MaterialEntity.class);
-        when(materialEntity.getId()).thenReturn("material");
-        when(materialEntity.getName()).thenReturn("MDF");
-        when(materialEntity.getColor()).thenReturn("White");
-        when(materialEntity.getThicknessMm()).thenReturn(bd("18"));
-        when(materialEntity.getLengthMm()).thenReturn(bd("1000"));
-        when(materialEntity.getWidthMm()).thenReturn(bd("1000"));
-        when(materialEntity.getPricePerSheet()).thenReturn(bd("100"));
-        var edgeEntity = mock(EdgeBandingEntity.class);
-        when(edgeEntity.getId()).thenReturn("edge");
-        when(edgeEntity.getName()).thenReturn("PVC");
-        when(edgeEntity.getWidthMm()).thenReturn(bd("22"));
-        when(edgeEntity.getPricePerMeter()).thenReturn(bd("2.50"));
-        var piece = mock(ProjectWorkpieceEntity.class);
-        when(piece.getId()).thenReturn("piece");
-        when(piece.getName()).thenReturn("Panel");
-        when(piece.getLengthMm()).thenReturn(bd("100"));
-        when(piece.getWidthMm()).thenReturn(bd("200"));
-        when(piece.getQuantity()).thenReturn(1);
-        when(piece.getMaterial()).thenReturn(materialEntity);
-        when(piece.getEdgeBanding()).thenReturn(edgeEntity);
-        assertEquals(edge, PricingWorkpiece.fromProject(piece).getEdgeBanding());
-        when(piece.getEdgeBanding()).thenReturn(null);
-        assertNull(PricingWorkpiece.fromProject(piece).getEdgeBanding());
+        var withEdge = new ProjectWorkpieceRow("piece", "project", "Panel", bd("100"),
+                bd("200"), 1, original, edge, true, false, false, false);
+        var withoutEdge = new ProjectWorkpieceRow("piece-2", "project", "Shelf", bd("100"),
+                bd("200"), 1, original, null, false, false, false, false);
+        assertEquals(edge, PricingWorkpiece.fromProject(withEdge).getEdgeBanding());
+        assertNull(PricingWorkpiece.fromProject(withoutEdge).getEdgeBanding());
     }
 
     private void fillForm() {

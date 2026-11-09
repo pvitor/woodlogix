@@ -17,6 +17,8 @@ import com.woodlogix.application.material.MaterialCatalogPort;
 import com.woodlogix.application.sales.SalesPipeline;
 import com.woodlogix.application.sales.SalesPipelinePort;
 import com.woodlogix.application.transaction.TransactionPort;
+import com.woodlogix.application.workpiece.ProjectWorkpiece;
+import com.woodlogix.application.workpiece.ProjectWorkpiecePort;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -60,5 +62,11 @@ public class ApplicationConfiguration {
     @Bean
     public SalesPipeline salesPipeline(SalesPipelinePort projects, TransactionPort transactions) {
         return new SalesPipeline(projects, transactions);
+    }
+
+    @Bean
+    public ProjectWorkpiece projectWorkpiece(ProjectWorkpiecePort workpieces,
+                                             TransactionPort transactions) {
+        return new ProjectWorkpiece(workpieces, transactions);
     }
 }
