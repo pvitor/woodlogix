@@ -1,10 +1,10 @@
 package com.woodlogix.desktop.ui.dashboard;
 
 import com.woodlogix.core.enums.SalesStage;
+import com.woodlogix.application.sales.SalesProjectRow;
 import com.woodlogix.desktop.service.CustomerService;
 import com.woodlogix.desktop.service.EstimateDraftService;
 import com.woodlogix.desktop.service.SalesPipelineService;
-import com.woodlogix.desktop.service.SalesProjectRow;
 import com.woodlogix.desktop.ui.UiTaskRunner;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;

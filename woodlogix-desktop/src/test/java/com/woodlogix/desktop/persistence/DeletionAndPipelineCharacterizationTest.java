@@ -18,6 +18,9 @@ import com.woodlogix.desktop.service.EdgeBandingData;
 import com.woodlogix.desktop.service.EdgeBandingService;
 import com.woodlogix.application.environment.EnvironmentCatalog;
 import com.woodlogix.application.environment.EnvironmentCatalogPort;
+import com.woodlogix.application.sales.SalesPipeline;
+import com.woodlogix.application.sales.SalesPipelinePort;
+import com.woodlogix.application.sales.SalesProjectInput;
 import com.woodlogix.desktop.service.EnvironmentData;
 import com.woodlogix.desktop.service.EnvironmentService;
 import com.woodlogix.desktop.service.EstimateDraftData;
@@ -67,6 +70,7 @@ import org.sqlite.SQLiteException;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.AdditionalAnswers.delegatesTo;
@@ -487,6 +491,67 @@ class DeletionAndPipelineCharacterizationTest {
         assertEquals("error.project-not-found",
                 assertThrows(IllegalArgumentException.class, () -> pipeline.findById("missing")).getMessage());
         assertEquals(after, jdbc.queryForMap("SELECT * FROM sales_projects WHERE id = ?", project.id()));
+    }
+
+    @Test
+    void pipelineListsStagesAndProjectsInCreatedAtDescendingOrder() {
+        var customer = context.getBean(CustomerService.class)
+                .create(new CustomerData("Customer", null, null, null));
+        var pipeline = context.getBean(SalesPipelineService.class);
+        var older = pipeline.create(new SalesProjectData(customer.id(), null, "Older", money("10")));
+        var newer = pipeline.create(new SalesProjectData(customer.id(), null, "Newer", money("20")));
+        var closed = pipeline.create(new SalesProjectData(customer.id(), null, "Closed", money("30")));
+        pipeline.move(closed.id(), SalesStage.CLOSED);
+        jdbc.update("UPDATE sales_projects SET created_at = ? WHERE id = ?",
+                "2025-01-01T10:00:00", older.id());
+        jdbc.update("UPDATE sales_projects SET created_at = ? WHERE id = ?",
+                "2025-01-02T10:00:00", newer.id());
+
+        var result = pipeline.findPipeline();
+
+        assertEquals(List.of(SalesStage.values()), List.copyOf(result.keySet()));
+        assertEquals(List.of(newer.id(), older.id()),
+                result.get(SalesStage.CONTACT).stream().map(row -> row.id()).toList());
+        assertEquals(List.of(closed.id()),
+                result.get(SalesStage.CLOSED).stream().map(row -> row.id()).toList());
+    }
+
+    @Test
+    void rollsBackProjectCreationWhenPersistenceFailsAfterFlush() {
+        var customer = context.getBean(CustomerService.class)
+                .create(new CustomerData("Customer", null, null, null));
+        var before = rows("sales_projects");
+        var pipeline = context.getBean(SalesPipeline.class);
+        var realPort = context.getBean(SalesPipelinePort.class);
+        var intercepted = mock(SalesPipelinePort.class, delegatesTo(realPort));
+        var observedFlushedWrite = new AtomicBoolean();
+        var failure = new IllegalStateException("injected pipeline failure");
+        doAnswer(invocation -> {
+            var created = realPort.createAndFlush(invocation.getArgument(0));
+            assertTrue(TransactionSynchronizationManager.isActualTransactionActive());
+            var entityManager = EntityManagerFactoryUtils.getTransactionalEntityManager(
+                    context.getBean(EntityManagerFactory.class));
+            assertTrue(entityManager != null && entityManager.isJoinedToTransaction());
+            assertEquals(1L, entityManager.createQuery(
+                            "SELECT COUNT(project) FROM SalesProjectEntity project "
+                                    + "WHERE project.id = :projectId", Long.class)
+                    .setParameter("projectId", created.id()).getSingleResult());
+            observedFlushedWrite.set(true);
+            throw failure;
+        }).when(intercepted).createAndFlush(any(SalesProjectInput.class));
+        ReflectionTestUtils.setField(pipeline, "projects", intercepted);
+
+        try {
+            assertSame(failure, assertThrows(IllegalStateException.class,
+                    () -> context.getBean(SalesPipelineService.class).create(
+                            new SalesProjectData(customer.id(), null, "Rollback", money("50")))));
+        } finally {
+            ReflectionTestUtils.setField(pipeline, "projects", realPort);
+        }
+
+        assertTrue(observedFlushedWrite.get());
+        assertFalse(TransactionSynchronizationManager.isActualTransactionActive());
+        assertEquals(before, rows("sales_projects"));
     }
 
     private Catalog createCatalog() {

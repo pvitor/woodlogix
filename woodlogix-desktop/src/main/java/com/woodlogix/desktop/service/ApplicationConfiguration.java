@@ -14,6 +14,8 @@ import com.woodlogix.application.hardware.HardwareCatalogPort;
 import com.woodlogix.application.hardware.HardwareDeletionPort;
 import com.woodlogix.application.material.MaterialCatalog;
 import com.woodlogix.application.material.MaterialCatalogPort;
+import com.woodlogix.application.sales.SalesPipeline;
+import com.woodlogix.application.sales.SalesPipelinePort;
 import com.woodlogix.application.transaction.TransactionPort;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -53,5 +55,10 @@ public class ApplicationConfiguration {
     @Bean
     public DeleteHardware deleteHardware(HardwareDeletionPort hardware, TransactionPort transactions) {
         return new DeleteHardware(hardware, transactions);
+    }
+
+    @Bean
+    public SalesPipeline salesPipeline(SalesPipelinePort projects, TransactionPort transactions) {
+        return new SalesPipeline(projects, transactions);
     }
 }

@@ -2,6 +2,7 @@ package com.woodlogix.desktop.ui.pricing;
 
 import com.woodlogix.application.edgebanding.EdgeBandingRow;
 import com.woodlogix.application.material.MaterialRow;
+import com.woodlogix.application.sales.SalesProjectRow;
 import com.woodlogix.core.enums.SalesStage;
 import com.woodlogix.desktop.persistence.entity.EdgeBandingEntity;
 import com.woodlogix.desktop.persistence.entity.MaterialEntity;

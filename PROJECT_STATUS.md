@@ -34,7 +34,7 @@ As versões estão declaradas no `pom.xml` raiz e nos POMs dos módulos.
 ### Implementação atual
 
 - **`woodlogix-core`** contém modelos de domínio, enums e cálculos (`PricingEngine`, `EdgeBandingCalculator`). Não depende de Spring, JavaFX ou JPA.
-- **`woodlogix-application`** contém os casos de uso dos catálogos de ferragens, materiais e fitas de borda, do cadastro de clientes e do catálogo de ambientes, e suas portas de persistência e transação, sem dependências de Spring ou JPA. A implementação transacional e os adaptadores JPA permanecem no Desktop.
+- **`woodlogix-application`** contém os casos de uso dos catálogos de ferragens, materiais e fitas de borda, do cadastro de clientes, do catálogo de ambientes e do pipeline de vendas, com portas de persistência e transação, sem dependências de Spring ou JPA. Os adaptadores JPA permanecem no Desktop.
 - **`woodlogix-desktop`** contém a aplicação JavaFX, controladores e FXML, serviços de casos de uso, entidades JPA, repositórios Spring Data, configuração SQLite e integração PDF.
 - **Serviços** coordenam operações como CRUD, validações, relações e transações. **Repositórios** estendem interfaces Spring Data JPA; não há DAOs JDBC manuais no fluxo atual.
 - **Integração JavaFX/Spring:** `WoodLogixDesktopLauncher` inicia `AppLauncher`; o contexto Spring é aberto no ciclo de vida JavaFX e encerrado em `stop()`. O `FXMLLoader` obtém controladores pelo contexto.
@@ -56,7 +56,7 @@ No **modo individual**, o fluxo aprovado é JavaFX → HTTP → Spring Boot loca
 
 No **modo compartilhado**, JavaFX acessará via HTTP um Spring Boot central na empresa, conectado a PostgreSQL. O acesso não dependerá obrigatoriamente de nuvem ou internet.
 
-Esses fluxos são **decisões de arquitetura, não funcionalidades disponíveis**: Application contém os catálogos de ferragens, materiais e fitas de borda, o cadastro de clientes e o catálogo de ambientes; ainda não existem o módulo Server, API/cliente HTTP nem persistência PostgreSQL. A migração prevista manterá o grafo JPA completo em um único módulo até sua transferência coordenada ao Server, seguida do corte dos consumidores JavaFX para HTTP, sem duas fontes de verdade.
+Esses fluxos são **decisões de arquitetura, não funcionalidades disponíveis**: Application contém os catálogos de ferragens, materiais e fitas de borda, o cadastro de clientes, o catálogo de ambientes e os casos de uso do pipeline de vendas; ainda não existem o módulo Server, API/cliente HTTP nem persistência PostgreSQL. A migração prevista manterá o grafo JPA completo em um único módulo até sua transferência coordenada ao Server, seguida do corte dos consumidores JavaFX para HTTP, sem duas fontes de verdade.
 
 ## 4. Funcionalidades
 
@@ -76,7 +76,7 @@ Legenda:
 | **Ferragens** | **Implementado e testado no serviço/persistência; interface sem cobertura automatizada.** Os casos de uso do catálogo residem em Application; `HardwareService` é uma fachada no Desktop e os controllers usam records independentes de JPA. CRUD e restrição de exclusão são cobertos nos testes de persistência. |
 | **Orçamentos e cálculos** | **Cálculo implementado e testado em escopo limitado; fluxo de orçamento implementado com cobertura parcial de UI.** `PricingController` monta peças, seleciona projeto e insumos, mantém parâmetros e ferragens, atualiza o resumo e salva/restaura um rascunho ativo. Testes JavaFX cobrem cenários específicos de seleção de material, peças e restauração, não o fluxo completo. O rascunho é único (`ACTIVE_DRAFT_ID = "active"`); não existe entidade de orçamento final/histórico de versões. |
 | **Fitas de borda** | **Implementado e testado em cálculo e persistência, com cobertura limitada de UI.** `EdgeBandingCatalog`, `EdgeBandingCatalogPort`, `EdgeBandingInput`, `EdgeBandingRow` e `EdgeBandingNotFoundException` residem em Application; `EdgeBandingCatalogAdapter`, `EdgeBandingService` (fachada), `MaterialController`, `PricingController` e `PricingWorkpiece` permanecem no Desktop. A exclusão verifica peças de projeto e rascunho e traduz somente violações SQLite de FK. A quantidade linear decorre das arestas selecionadas, dimensões e quantidade da peça; o custo usa metros lineares e preço cadastrado. Existem testes no `PricingEngineTest` para comprimento/custo e testes unitários e de integração do catálogo. Isso não representa um plano de corte ou uma estimativa de sobras de fita. |
-| **Pipeline de vendas** | **Implementado e testado no serviço/persistência; interação visual sem cobertura automatizada.** `SalesPipelineService` cria projetos vinculados a clientes e ambientes, lista projetos por etapas (`CONTACT`, `MEASUREMENT_SCHEDULED`, `QUOTE_SENT`, `NEGOTIATION`, `CLOSED`) e movimenta projetos entre etapas. `KanbanController` apresenta cartões e implementa movimentação por arrastar e soltar. Testes cobrem criação/movimentação no serviço, não o gesto de arrastar na tela. |
+| **Pipeline de vendas** | **Implementado e testado no caso de uso/persistência; interação visual sem cobertura automatizada.** `SalesPipeline`, `SalesPipelinePort`, `SalesProjectInput` e `SalesProjectRow` residem em Application; `SalesPipelineAdapter` e `SalesPipelineService` (fachada com Bean Validation) permanecem no Desktop. O caso de uso cria projetos vinculados a clientes e ambientes, lista todas as etapas (`CONTACT`, `MEASUREMENT_SCHEDULED`, `QUOTE_SENT`, `NEGOTIATION`, `CLOSED`) mantendo a ordenação por criação decrescente, busca por ID e movimenta projetos. `findCustomers()` e `findEnvironments()` continuam na fachada como consultas auxiliares da interface. `KanbanController` apresenta cartões e implementa movimentação por arrastar e soltar. Testes cobrem associação, ordenação e rollback, mas não o gesto de arrastar na tela. |
 | **Propostas em PDF** | **Implementado e testado com cobertura limitada.** `ProposalPdfService` gera PDF de uma página com dados de cliente/projeto, etapa e valor informado no projeto. Há testes de exportação e conteúdo em inglês e espanhol, além de teste integrado de exportação. O PDF usa o valor comercial do projeto; não calcula nem incorpora o resultado de `PricingEngine` ou o detalhamento do rascunho. |
 | **Persistência** | **Implementada e testada em integração.** SQLite/JPA armazena clientes, ambientes, insumos, projetos, peças de projetos e o rascunho. Relacionamentos e bloqueios de exclusão são cobertos em testes. `FurnitureItemEntity`, `FurniturePartEntity` e seus repositórios representam dados de móveis/partes e há teste direto de persistência, mas não foi encontrado serviço ou tela de cadastro para completar esse fluxo: **parcialmente implementado como funcionalidade de produto**. |
 
@@ -93,7 +93,7 @@ Executado para este registro:
 ```text
 mvn -o test
 BUILD SUCCESS
-149 testes (core 7, application 38, desktop 104): 0 falhas, 0 erros, 0 ignorados
+158 testes (core 7, application 45, desktop 106): 0 falhas, 0 erros, 0 ignorados
 ```
 
 Grupos existentes:
@@ -106,6 +106,7 @@ Grupos existentes:
 - `woodlogix-application/.../CustomerCatalogTest.java` — 6 testes: validação restrita ao nome, CRUD, busca, ordem da exclusão e notificação, propagação de falhas sem Spring ou JPA.
 - `woodlogix-desktop/.../CustomerCatalogIntegrationTest.java` — 9 testes: CRUD e busca, validação da fachada, notificações `AFTER_COMMIT` somente após commit (inclusive com transação externa) e ausentes em rollback, FK física real em `project_environments`, `sales_projects` e `furniture_items`, falha que não é FK propagada, rollback após falha de flush com comparação do estado persistido, em SQLite temporário migrado.
 - `woodlogix-application/.../EnvironmentCatalogTest.java` — 15 testes: normalização, deduplicação, sincronização e resultado (`environments`, `changed` e `requestedCount`), retornos antecipados, referências, notificação e propagação de falhas, sem Spring ou JPA.
+- `woodlogix-application/.../SalesPipelineTest.java` — 7 testes: listagem de todas as etapas, validação de cliente/ambiente e associação, criação, movimentação, IDs inexistentes, validação do input e propagação de falhas, sem Spring ou JPA.
 - `woodlogix-desktop/.../EnvironmentCatalogIntegrationTest.java` — 10 testes: CRUD, sincronização e supressão de log em retornos antecipados, validação e não encontrado, `AFTER_COMMIT` após commit/ausente em rollback/com transação externa, FK física em `furniture_parts`, `furniture_items` e `sales_projects`, bloqueio por pré-checagem, rollback após flush e falha que não é FK propagada, em SQLite temporário migrado.
 - `woodlogix-desktop/.../MaterialCatalogIntegrationTest.java` — verifica CRUD, ordenação, FK real e rollback em SQLite temporário migrado.
 - `woodlogix-desktop/.../EdgeBandingCatalogIntegrationTest.java` — 9 testes: CRUD, ordenação, pré-checagem de referências, FK física real em `project_workpieces` e `project_estimate_workpieces`, rollback após falha de flush, falha que não é FK propagada sem conversão, em SQLite temporário migrado.
@@ -115,7 +116,7 @@ Grupos existentes:
 - `woodlogix-desktop/.../PersistenceRepositoryTest.java` — 22 testes de integração com Spring e SQLite temporário (`@TempDir`), cobrindo persistência de relações, CRUD e restrições de clientes, ambientes, insumos, ferragens, peças de projeto e rascunho; também pesquisa, dados inválidos, movimento de projeto e exportação PDF.
 - `woodlogix-desktop/.../ProposalPdfServiceTest.java` — 4 testes de conteúdo/exportação PDF e mensagens/currency em inglês e espanhol.
 - `woodlogix-desktop/.../ConfigLoaderTest.java` — 1 teste de configuração externa.
-- `woodlogix-desktop/.../DeletionAndPipelineCharacterizationTest.java` — caracteriza exclusões com FKs reais, integridade e pipeline em SQLite temporário, incluindo rollback de exclusão em lote.
+- `woodlogix-desktop/.../DeletionAndPipelineCharacterizationTest.java` — 16 testes de caracterização em SQLite temporário: exclusões com FKs reais, associações do pipeline, ordenação por etapa/data, movimentação sem alterar outros campos e rollback de criação após flush.
 - `woodlogix-desktop/.../EnvironmentAndDraftCharacterizationTest.java` — caracteriza sincronização de ambientes, rascunhos e rollback com escritas reais.
 - `woodlogix-desktop/.../SqliteMigrationTest.java` — testa aplicação e reabertura da migração, recusa de banco não vazio sem histórico e validação de schema.
 - `woodlogix-desktop/.../DeletionErrorTranslationTest.java` — 5 testes: verifica reconhecimento seletivo de violações de FK SQLite, tradução restrita a exclusões pontuais e em lote, e propagação de erros de criação e não-FK.

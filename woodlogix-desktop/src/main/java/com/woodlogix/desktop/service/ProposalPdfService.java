@@ -1,5 +1,6 @@
 package com.woodlogix.desktop.service;
 
+import com.woodlogix.application.sales.SalesProjectRow;
 import com.woodlogix.core.enums.RoomType;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.pdmodel.PDPage;

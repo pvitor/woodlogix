@@ -1,5 +1,6 @@
 package com.woodlogix.desktop.service;
 
+import com.woodlogix.application.sales.SalesProjectRow;
 import com.woodlogix.core.enums.SalesStage;
 import org.apache.pdfbox.Loader;
 import org.apache.pdfbox.text.PDFTextStripper;

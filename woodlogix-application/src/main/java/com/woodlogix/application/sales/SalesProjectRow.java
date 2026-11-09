@@ -1,4 +1,4 @@
-package com.woodlogix.desktop.service;
+package com.woodlogix.application.sales;
 
 import com.woodlogix.core.enums.SalesStage;
 
