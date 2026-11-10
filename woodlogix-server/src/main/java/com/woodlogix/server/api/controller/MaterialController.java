@@ -2,6 +2,7 @@ package com.woodlogix.server.api.controller;
 
 import com.woodlogix.application.material.MaterialCatalog;
 import com.woodlogix.application.material.MaterialInput;
+import com.woodlogix.application.material.MaterialInUseException;
 import com.woodlogix.application.material.MaterialNotFoundException;
 import com.woodlogix.application.material.MaterialRow;
 import com.woodlogix.server.api.dto.ApiErrorResponse;
@@ -12,6 +13,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -72,6 +74,30 @@ public class MaterialController {
                     .body(new ApiErrorResponse(
                             "NOT_FOUND",
                             "error.material-not-found",
+                            List.of(),
+                            null));
+        }
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<?> delete(@PathVariable("id") String id) {
+        try {
+            materialCatalog.delete(id);
+            return ResponseEntity.noContent().build();
+        } catch (MaterialNotFoundException exception) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .body(new ApiErrorResponse(
+                            "NOT_FOUND",
+                            "error.material-not-found",
+                            List.of(),
+                            null));
+        } catch (MaterialInUseException exception) {
+            return ResponseEntity.status(HttpStatus.CONFLICT)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .body(new ApiErrorResponse(
+                            "CONFLICT",
+                            "error.material-has-related-records",
                             List.of(),
                             null));
         }

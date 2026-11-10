@@ -35,7 +35,7 @@ public class MaterialCatalog {
                 throw new MaterialNotFoundException();
             }
             if (materials.isReferencedByProjectWorkpiece(id) || materials.isReferencedByDraftWorkpiece(id)) {
-                throw new IllegalStateException("error.material-has-related-records");
+                throw new MaterialInUseException();
             }
             materials.deleteAndFlush(id);
         });

@@ -60,13 +60,13 @@ class MaterialCatalogTest {
         fixture.project = true;
         fixture.events.clear();
         assertEquals("error.material-has-related-records",
-                assertThrows(IllegalStateException.class, () -> fixture.catalog.delete("id")).getMessage());
+                assertThrows(MaterialInUseException.class, () -> fixture.catalog.delete("id")).getMessage());
         assertEquals(List.of("write", "exists", "project"), fixture.events);
         fixture.project = false;
         fixture.draft = true;
         fixture.events.clear();
         assertEquals("error.material-has-related-records",
-                assertThrows(IllegalStateException.class, () -> fixture.catalog.delete("id")).getMessage());
+                assertThrows(MaterialInUseException.class, () -> fixture.catalog.delete("id")).getMessage());
         assertEquals(List.of("write", "exists", "project", "draft"), fixture.events);
     }
 

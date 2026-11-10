@@ -2,11 +2,17 @@ package com.woodlogix.server.api.controller;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.woodlogix.application.customer.CustomerCatalog;
+import com.woodlogix.application.customer.CustomerInput;
 import com.woodlogix.application.draft.EstimateDraft;
 import com.woodlogix.application.draft.EstimateDraftInput;
 import com.woodlogix.application.material.MaterialCatalog;
 import com.woodlogix.application.material.MaterialInput;
 import com.woodlogix.application.material.MaterialRow;
+import com.woodlogix.application.sales.SalesPipeline;
+import com.woodlogix.application.sales.SalesProjectInput;
+import com.woodlogix.application.workpiece.ProjectWorkpiece;
+import com.woodlogix.application.workpiece.ProjectWorkpieceInput;
 import com.woodlogix.server.WoodLogixServerApplication;
 import com.woodlogix.server.api.dto.ApiErrorResponse;
 import com.woodlogix.server.api.dto.MaterialRequest;
@@ -30,6 +36,7 @@ import java.util.List;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.springframework.http.MediaType.APPLICATION_JSON;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
@@ -53,6 +60,15 @@ class MaterialControllerIntegrationTest {
 
     @Autowired
     private EstimateDraft estimateDraft;
+
+    @Autowired
+    private CustomerCatalog customerCatalog;
+
+    @Autowired
+    private SalesPipeline salesPipeline;
+
+    @Autowired
+    private ProjectWorkpiece projectWorkpiece;
 
     @Autowired
     private ObjectMapper objectMapper;
@@ -223,6 +239,109 @@ class MaterialControllerIntegrationTest {
                     String.class));
             assertEquals("Plywood", jdbcTemplate.queryForObject(
                     "SELECT name FROM materials WHERE id = ?", String.class, material.id()));
+        } finally {
+            estimateDraft.saveActiveDraft(new EstimateDraftInput(
+                    null, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO,
+                    BigDecimal.ZERO, List.of(), List.of()));
+        }
+    }
+
+    @Test
+    void deletesMaterialAndItNoLongerAppearsInGet() throws Exception {
+        MaterialRow material = createMaterial(
+                "MDF", "White", "18.00", "2750.00", "1840.00", "120.50");
+
+        mockMvc.perform(delete("/api/v1/materials/{id}", material.id()))
+                .andExpect(status().isNoContent())
+                .andExpect(content().string(""));
+
+        mockMvc.perform(get("/api/v1/materials").accept(APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andExpect(content().json("[]"));
+        assertEquals(0, materialCatalog.findAll().size());
+    }
+
+    @Test
+    void returnsNotFoundWhenDeletingUnknownMaterial() throws Exception {
+        MvcResult result = mockMvc.perform(delete("/api/v1/materials/{id}",
+                        "missing-material-id"))
+                .andExpect(status().isNotFound())
+                .andExpect(content().contentTypeCompatibleWith(APPLICATION_JSON))
+                .andReturn();
+
+        assertEquals(new ApiErrorResponse(
+                "NOT_FOUND", "error.material-not-found", List.of(), null),
+                objectMapper.readValue(
+                        result.getResponse().getContentAsString(), ApiErrorResponse.class));
+    }
+
+    @Test
+    void returnsConflictAndPreservesMaterialAndProjectReferenceWhenMaterialIsInUse()
+            throws Exception {
+        MaterialRow material = createMaterial(
+                "MDF", "White", "18.00", "2750.00", "1840.00", "120.50");
+        var customer = customerCatalog.create(
+                new CustomerInput("Customer", null, null, null));
+        var project = salesPipeline.create(new SalesProjectInput(
+                customer.id(), null, "Project", new BigDecimal("100.00")));
+        var workpiece = projectWorkpiece.create(new ProjectWorkpieceInput(
+                project.id(), "Panel", new BigDecimal("100"), new BigDecimal("50"), 1,
+                material.id(), null, false, false, false, false));
+
+        try {
+            MvcResult result = mockMvc.perform(delete(
+                            "/api/v1/materials/{id}", material.id()))
+                    .andExpect(status().isConflict())
+                    .andExpect(content().contentTypeCompatibleWith(APPLICATION_JSON))
+                    .andReturn();
+
+            assertEquals(new ApiErrorResponse(
+                    "CONFLICT", "error.material-has-related-records", List.of(), null),
+                    objectMapper.readValue(
+                            result.getResponse().getContentAsString(), ApiErrorResponse.class));
+            assertEquals(1, jdbcTemplate.queryForObject(
+                    "SELECT COUNT(*) FROM materials WHERE id = ?", Integer.class, material.id()));
+            assertEquals(1, jdbcTemplate.queryForObject(
+                    "SELECT COUNT(*) FROM project_workpieces "
+                            + "WHERE id = ? AND material_id = ?",
+                    Integer.class, workpiece.id(), material.id()));
+            assertDatabaseIntegrity();
+        } finally {
+            projectWorkpiece.delete(workpiece.id());
+        }
+    }
+
+    @Test
+    void returnsConflictAndPreservesMaterialAndDraftReferenceWhenMaterialIsInUse()
+            throws Exception {
+        MaterialRow material = createMaterial(
+                "MDF", "White", "18.00", "2750.00", "1840.00", "120.50");
+        estimateDraft.saveActiveDraft(new EstimateDraftInput(
+                null, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO,
+                BigDecimal.ZERO,
+                List.of(new EstimateDraftInput.WorkpieceInput(
+                        null, "Panel", new BigDecimal("100"), new BigDecimal("50"), 1,
+                        material.id(), null, false, false, false, false)),
+                List.of()));
+
+        try {
+            MvcResult result = mockMvc.perform(delete(
+                            "/api/v1/materials/{id}", material.id()))
+                    .andExpect(status().isConflict())
+                    .andExpect(content().contentTypeCompatibleWith(APPLICATION_JSON))
+                    .andReturn();
+
+            assertEquals(new ApiErrorResponse(
+                    "CONFLICT", "error.material-has-related-records", List.of(), null),
+                    objectMapper.readValue(
+                            result.getResponse().getContentAsString(), ApiErrorResponse.class));
+            assertEquals(1, jdbcTemplate.queryForObject(
+                    "SELECT COUNT(*) FROM materials WHERE id = ?", Integer.class, material.id()));
+            assertEquals(1, jdbcTemplate.queryForObject(
+                    "SELECT COUNT(*) FROM project_estimate_workpieces "
+                            + "WHERE material_id = ?",
+                    Integer.class, material.id()));
+            assertDatabaseIntegrity();
         } finally {
             estimateDraft.saveActiveDraft(new EstimateDraftInput(
                     null, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO,
@@ -409,5 +528,9 @@ class MaterialControllerIntegrationTest {
     private static void assertDecimalEquals(BigDecimal expected, BigDecimal actual) {
         assertTrue(actual != null && expected.compareTo(actual) == 0,
                 () -> "Expected " + expected + " but was " + actual);
+    }
+
+    private void assertDatabaseIntegrity() {
+        assertTrue(jdbcTemplate.queryForList("PRAGMA foreign_key_check").isEmpty());
     }
 }
