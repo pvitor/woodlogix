@@ -1,10 +1,12 @@
 package com.woodlogix.server.persistence;
 
 import com.woodlogix.application.customer.CustomerCatalogPort;
+import com.woodlogix.application.customer.CustomerInUseException;
 import com.woodlogix.application.customer.CustomerInput;
 import com.woodlogix.application.customer.CustomerRow;
 import com.woodlogix.server.persistence.entity.CustomerEntity;
 import com.woodlogix.server.persistence.repository.CustomerRepository;
+import org.springframework.dao.DataAccessException;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
@@ -58,8 +60,15 @@ public class CustomerCatalogAdapter implements CustomerCatalogPort {
 
     @Override
     public void deleteAndFlush(String id) {
-        customers.deleteById(id);
-        customers.flush();
+        try {
+            customers.deleteById(id);
+            customers.flush();
+        } catch (DataAccessException exception) {
+            if (!SqliteIntegrityErrors.isForeignKeyViolation(exception)) {
+                throw exception;
+            }
+            throw new CustomerInUseException(exception);
+        }
     }
 
     private static CustomerRow toRow(CustomerEntity customer) {
