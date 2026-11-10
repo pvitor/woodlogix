@@ -165,7 +165,7 @@ public class EnvironmentCatalog {
                         || environments.hasFurnitureItemReferences(environment.id())
                         || environments.hasSalesProjectReferences(environment.id()));
         if (hasLinkedRecords) {
-            throw new IllegalStateException(HAS_RELATED_RECORDS);
+            throw new EnvironmentInUseException();
         }
 
         if (!environmentsToRemove.isEmpty()) {

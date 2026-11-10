@@ -2,6 +2,7 @@ package com.woodlogix.server.persistence;
 
 import com.woodlogix.application.customer.CustomerNotFoundException;
 import com.woodlogix.application.environment.EnvironmentCatalogPort;
+import com.woodlogix.application.environment.EnvironmentInUseException;
 import com.woodlogix.application.environment.EnvironmentNotFoundException;
 import com.woodlogix.application.environment.EnvironmentRow;
 import com.woodlogix.server.persistence.entity.CustomerEntity;
@@ -22,7 +23,6 @@ import java.util.Optional;
 @Component
 public class EnvironmentCatalogAdapter implements EnvironmentCatalogPort {
     private static final Logger LOGGER = LoggerFactory.getLogger(EnvironmentCatalogAdapter.class);
-    private static final String HAS_RELATED_RECORDS = "error.environment-has-related-records";
 
     private final CustomerRepository customers;
     private final ProjectEnvironmentRepository environments;
@@ -111,8 +111,16 @@ public class EnvironmentCatalogAdapter implements EnvironmentCatalogPort {
 
     @Override
     public void deleteAndFlush(String environmentId) {
-        environments.deleteById(environmentId);
-        environments.flush();
+        try {
+            environments.deleteById(environmentId);
+            environments.flush();
+        } catch (DataAccessException exception) {
+            if (!SqliteIntegrityErrors.isForeignKeyViolation(exception)) {
+                throw exception;
+            }
+            LOGGER.warn("Environment deletion rejected by related records", exception);
+            throw new EnvironmentInUseException(exception);
+        }
     }
 
     @Override
@@ -125,7 +133,7 @@ public class EnvironmentCatalogAdapter implements EnvironmentCatalogPort {
                 throw exception;
             }
             LOGGER.warn("Bulk environment replacement rejected by related records", exception);
-            throw new IllegalStateException(HAS_RELATED_RECORDS, exception);
+            throw new EnvironmentInUseException(exception);
         }
     }
 

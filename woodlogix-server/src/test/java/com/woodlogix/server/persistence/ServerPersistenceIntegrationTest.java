@@ -9,6 +9,7 @@ import com.woodlogix.application.edgebanding.EdgeBandingCatalog;
 import com.woodlogix.application.edgebanding.EdgeBandingInput;
 import com.woodlogix.application.environment.EnvironmentCatalog;
 import com.woodlogix.application.environment.EnvironmentCatalogPort;
+import com.woodlogix.application.environment.EnvironmentInUseException;
 import com.woodlogix.application.environment.EnvironmentRow;
 import com.woodlogix.application.hardware.DeleteHardware;
 import com.woodlogix.application.hardware.HardwareCatalog;
@@ -270,10 +271,10 @@ class ServerPersistenceIntegrationTest {
 
         for (EnvironmentRow environment : List.of(
                 partEnvironment, itemEnvironment, projectEnvironment)) {
-            DataAccessException failure = assertThrows(
-                    DataAccessException.class,
+            EnvironmentInUseException failure = assertThrows(
+                    EnvironmentInUseException.class,
                     () -> environments.delete(environment.id()), environment.type());
-            assertTrue(SqliteIntegrityErrors.isForeignKeyViolation(failure), environment.type());
+            assertEquals("error.environment-has-related-records", failure.getMessage());
             assertEquals(1, jdbc.queryForObject(
                     "SELECT COUNT(*) FROM project_environments WHERE id = ?",
                     Integer.class, environment.id()));
