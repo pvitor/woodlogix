@@ -2,6 +2,8 @@ package com.woodlogix.server.api.controller;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.woodlogix.application.draft.EstimateDraft;
+import com.woodlogix.application.draft.EstimateDraftInput;
 import com.woodlogix.application.material.MaterialCatalog;
 import com.woodlogix.application.material.MaterialInput;
 import com.woodlogix.application.material.MaterialRow;
@@ -30,6 +32,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.springframework.http.MediaType.APPLICATION_JSON;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -47,6 +50,9 @@ class MaterialControllerIntegrationTest {
 
     @Autowired
     private MaterialCatalog materialCatalog;
+
+    @Autowired
+    private EstimateDraft estimateDraft;
 
     @Autowired
     private ObjectMapper objectMapper;
@@ -160,6 +166,71 @@ class MaterialControllerIntegrationTest {
     }
 
     @Test
+    void updatesMaterialAndPersistsValuesWithoutChangingItsId() throws Exception {
+        MaterialRow original = createMaterial(
+                "MDF", "White", "18.00", "2750.00", "1840.00", "120.50");
+        MaterialRequest request = materialRequest(
+                "Plywood", "Natural", "15.00", "2440.00", "1220.00", "98.75");
+
+        MvcResult result = mockMvc.perform(put("/api/v1/materials/{id}", original.id())
+                        .contentType(APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsBytes(request)))
+                .andExpect(status().isOk())
+                .andExpect(content().contentTypeCompatibleWith(APPLICATION_JSON))
+                .andReturn();
+
+        MaterialResponse response = objectMapper.readValue(
+                result.getResponse().getContentAsString(), MaterialResponse.class);
+        MaterialResponse expected = new MaterialResponse(original.id(), request.name(),
+                request.color(), request.thicknessMm(), request.lengthMm(),
+                request.widthMm(), request.pricePerSheet());
+        assertEquals(expected, response);
+
+        MvcResult getResult = mockMvc.perform(get("/api/v1/materials").accept(APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andReturn();
+        List<MaterialResponse> materials = objectMapper.readValue(
+                getResult.getResponse().getContentAsString(), new TypeReference<>() {
+                });
+        assertEquals(1, materials.size());
+        assertMaterialResponse(new MaterialRow(expected.id(), expected.name(), expected.color(),
+                expected.thicknessMm(), expected.lengthMm(), expected.widthMm(),
+                expected.pricePerSheet()), materials.get(0));
+    }
+
+    @Test
+    void updatesMaterialReferencedByAnActiveDraftWithoutChangingTheRelationship() throws Exception {
+        MaterialRow material = createMaterial(
+                "MDF", "White", "18.00", "2750.00", "1840.00", "120.50");
+        estimateDraft.saveActiveDraft(new EstimateDraftInput(
+                null, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO,
+                BigDecimal.ZERO,
+                List.of(new EstimateDraftInput.WorkpieceInput(
+                        null, "Panel", new BigDecimal("100"), new BigDecimal("50"), 1,
+                        material.id(), null, false, false, false, false)),
+                List.of()));
+
+        try {
+            MaterialRequest request = materialRequest(
+                    "Plywood", "Natural", "15.00", "2440.00", "1220.00", "98.75");
+            mockMvc.perform(put("/api/v1/materials/{id}", material.id())
+                            .contentType(APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsBytes(request)))
+                    .andExpect(status().isOk());
+
+            assertEquals(material.id(), jdbcTemplate.queryForObject(
+                    "SELECT material_id FROM project_estimate_workpieces LIMIT 1",
+                    String.class));
+            assertEquals("Plywood", jdbcTemplate.queryForObject(
+                    "SELECT name FROM materials WHERE id = ?", String.class, material.id()));
+        } finally {
+            estimateDraft.saveActiveDraft(new EstimateDraftInput(
+                    null, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO,
+                    BigDecimal.ZERO, List.of(), List.of()));
+        }
+    }
+
+    @Test
     void returnsStructuredBadRequestForInvalidMaterialFieldsWithoutPersisting() throws Exception {
         List<MaterialRequest> invalidRequests = List.of(
                 materialRequest(null, "White", "18", "2750", "1840", "120"),
@@ -191,6 +262,38 @@ class MaterialControllerIntegrationTest {
     }
 
     @Test
+    void returnsStructuredBadRequestForInvalidUpdateWithoutModifyingMaterial() throws Exception {
+        MaterialRow original = createMaterial(
+                "MDF", "White", "18.00", "2750.00", "1840.00", "120.50");
+        List<MaterialRequest> invalidRequests = List.of(
+                materialRequest(null, "White", "18", "2750", "1840", "120"),
+                materialRequest("MDF", null, "18", "2750", "1840", "120"),
+                materialRequest("", "White", "18", "2750", "1840", "120"),
+                materialRequest("MDF", " ", "18", "2750", "1840", "120"),
+                materialRequest("MDF", "White", "0", "2750", "1840", "120"),
+                materialRequest("MDF", "White", "18", "0", "1840", "120"),
+                materialRequest("MDF", "White", "18", "2750", "0", "120"),
+                materialRequest("MDF", "White", "18", "2750", "1840", "-0.01")
+        );
+        ApiErrorResponse expectedError = new ApiErrorResponse(
+                "VALIDATION_ERROR", "validation.material-invalid", List.of(), null);
+
+        for (MaterialRequest request : invalidRequests) {
+            MvcResult result = mockMvc.perform(put("/api/v1/materials/{id}", original.id())
+                            .contentType(APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsBytes(request)))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(content().contentTypeCompatibleWith(APPLICATION_JSON))
+                    .andReturn();
+
+            assertEquals(expectedError, objectMapper.readValue(
+                    result.getResponse().getContentAsString(), ApiErrorResponse.class));
+        }
+
+        assertMaterialResponse(original, materialCatalog.findAll().get(0));
+    }
+
+    @Test
     void returnsStructuredBadRequestForNullJsonRequestWithoutPersisting() throws Exception {
         int existingMaterials = materialCatalog.findAll().size();
 
@@ -206,6 +309,48 @@ class MaterialControllerIntegrationTest {
         assertEquals(new ApiErrorResponse(
                 "VALIDATION_ERROR", "validation.material-invalid", List.of(), null), error);
         assertEquals(existingMaterials, materialCatalog.findAll().size());
+    }
+
+    @Test
+    void returnsStructuredBadRequestForNullJsonUpdateWithoutPersisting() throws Exception {
+        MaterialRow original = createMaterial(
+                "MDF", "White", "18.00", "2750.00", "1840.00", "120.50");
+
+        MvcResult result = mockMvc.perform(put("/api/v1/materials/{id}", original.id())
+                        .contentType(APPLICATION_JSON)
+                        .content("null"))
+                .andExpect(status().isBadRequest())
+                .andExpect(content().contentTypeCompatibleWith(APPLICATION_JSON))
+                .andReturn();
+
+        assertEquals(new ApiErrorResponse(
+                "VALIDATION_ERROR", "validation.material-invalid", List.of(), null),
+                objectMapper.readValue(
+                        result.getResponse().getContentAsString(), ApiErrorResponse.class));
+        assertMaterialResponse(original, materialCatalog.findAll().get(0));
+    }
+
+    @Test
+    void returnsNotFoundForUnknownMaterialIdWithoutCreatingOrModifyingMaterials() throws Exception {
+        MaterialRow existing = createMaterial(
+                "MDF", "White", "18.00", "2750.00", "1840.00", "120.50");
+        MaterialRequest request = materialRequest(
+                "Plywood", "Natural", "15.00", "2440.00", "1220.00", "98.75");
+
+        MvcResult result = mockMvc.perform(put("/api/v1/materials/{id}",
+                        "missing-material-id")
+                        .contentType(APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsBytes(request)))
+                .andExpect(status().isNotFound())
+                .andExpect(content().contentTypeCompatibleWith(APPLICATION_JSON))
+                .andReturn();
+
+        assertEquals(new ApiErrorResponse(
+                "NOT_FOUND", "error.material-not-found", List.of(), null),
+                objectMapper.readValue(
+                        result.getResponse().getContentAsString(), ApiErrorResponse.class));
+        assertEquals(1, materialCatalog.findAll().size());
+        assertMaterialResponse(existing, materialCatalog.findAll().get(0));
     }
 
     private MaterialRow createMaterial(
@@ -242,6 +387,16 @@ class MaterialControllerIntegrationTest {
     }
 
     private static void assertMaterialResponse(MaterialRow expected, MaterialResponse actual) {
+        assertEquals(expected.id(), actual.id());
+        assertEquals(expected.name(), actual.name());
+        assertEquals(expected.color(), actual.color());
+        assertDecimalEquals(expected.thicknessMm(), actual.thicknessMm());
+        assertDecimalEquals(expected.lengthMm(), actual.lengthMm());
+        assertDecimalEquals(expected.widthMm(), actual.widthMm());
+        assertDecimalEquals(expected.pricePerSheet(), actual.pricePerSheet());
+    }
+
+    private static void assertMaterialResponse(MaterialRow expected, MaterialRow actual) {
         assertEquals(expected.id(), actual.id());
         assertEquals(expected.name(), actual.name());
         assertEquals(expected.color(), actual.color());
