@@ -54,13 +54,15 @@ class EdgeBandingCatalogTest {
         fixture.project = true;
         fixture.events.clear();
         assertEquals("error.edge-banding-has-related-records",
-                assertThrows(IllegalStateException.class, () -> fixture.catalog.delete("id")).getMessage());
+                assertThrows(EdgeBandingInUseException.class,
+                        () -> fixture.catalog.delete("id")).getMessage());
         assertEquals(List.of("write", "exists", "project"), fixture.events);
         fixture.project = false;
         fixture.draft = true;
         fixture.events.clear();
         assertEquals("error.edge-banding-has-related-records",
-                assertThrows(IllegalStateException.class, () -> fixture.catalog.delete("id")).getMessage());
+                assertThrows(EdgeBandingInUseException.class,
+                        () -> fixture.catalog.delete("id")).getMessage());
         assertEquals(List.of("write", "exists", "project", "draft"), fixture.events);
     }
 

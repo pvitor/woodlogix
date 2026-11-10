@@ -36,7 +36,7 @@ public class EdgeBandingCatalog {
             }
             if (edgeBandings.isReferencedByProjectWorkpiece(id)
                     || edgeBandings.isReferencedByDraftWorkpiece(id)) {
-                throw new IllegalStateException("error.edge-banding-has-related-records");
+                throw new EdgeBandingInUseException();
             }
             edgeBandings.deleteAndFlush(id);
         });
