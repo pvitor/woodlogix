@@ -25,6 +25,7 @@ O problema que pretende resolver é a dispersão de informações operacionais e
 | Flyway | Migração inicial versionada do schema SQLite; versão `11.7.2` gerenciada pelo Spring Boot. |
 | Apache PDFBox | Geração e leitura de propostas PDF; versão `3.0.5`. |
 | Jackson | Serialização dos DTOs de transporte; gerenciado pelo BOM Spring Boot no Server e também no Desktop. |
+| MapStruct | Geração em compilação dos mapeadores HTTP no Server e Desktop; versão `1.5.5.Final`, sem geração/reflexão de mapeamento em runtime. |
 | JUnit 5, Mockito e Spring Boot Test | Testes unitários e de integração existentes. |
 | Lombok | Redução pontual de código repetitivo. |
 
@@ -36,9 +37,10 @@ As versões estão declaradas no `pom.xml` raiz e nos POMs dos módulos.
 
 - **`woodlogix-core`** contém modelos de domínio, enums e cálculos (`PricingEngine`, `EdgeBandingCalculator`). Não depende de Spring, JavaFX ou JPA.
 - **`woodlogix-application`** contém os casos de uso dos catálogos de ferragens, materiais e fitas de borda, do cadastro de clientes, do catálogo de ambientes, do pipeline de vendas e do CRUD de peças de projeto, com portas de persistência e transação, sem dependências de Spring, JPA, Jakarta ou JavaFX em produção. Os adaptadores JPA permanecem no Desktop.
-- **`woodlogix-server`** é um módulo Spring Boot Web dependente de Application e Core, sem dependência de Desktop. Contém a classe de inicialização e records DTO em `com.woodlogix.server.api.dto`; seu POM configura `spring-boot-starter-web` e o plugin Spring Boot `3.5.16` para reempacotamento executável. Ainda não possui endpoints, banco de dados, migrations ou adapters.
-- **`woodlogix-desktop`** contém a aplicação JavaFX, controladores e FXML, serviços de casos de uso, entidades JPA, repositórios Spring Data, configuração SQLite, integração PDF e cópias dos DTOs de transporte em `com.woodlogix.desktop.api.dto`. Jackson Databind é gerenciado pelo BOM Spring Boot; Desktop não depende de Server.
-- **Contratos de transporte:** os DTOs estão duplicados nos módulos Server e Desktop, sem módulo compartilhado. JSON de referência e testes de serialização/desserialização nos dois módulos verificam equivalência estrutural, enums por nome, campos opcionais nulos, listas vazias e `BigDecimal`. O teste do Desktop também verifica tolerância a campos adicionais. Não há mapeadores, cliente HTTP ou endpoints nesta etapa.
+- **`woodlogix-server`** é um módulo Spring Boot Web dependente de Application e Core, sem dependência de Desktop. Contém a classe de inicialização, records DTO em `com.woodlogix.server.api.dto` e mapeadores gerados em `com.woodlogix.server.api.mapper`; os mapeadores convertem requests para inputs da Application e resultados para responses. Seu POM configura `spring-boot-starter-web` e o plugin Spring Boot `3.5.16` para reempacotamento executável. Ainda não possui endpoints, banco de dados, migrations ou adapters.
+- **`woodlogix-desktop`** contém a aplicação JavaFX, controladores e FXML, serviços de casos de uso, entidades JPA, repositórios Spring Data, configuração SQLite, integração PDF, DTOs em `com.woodlogix.desktop.api.dto` e mapeadores em `com.woodlogix.desktop.api.mapper`. Estes convertem responses para rows usadas pela interface/fachadas e dados de entrada existentes para requests. Jackson Databind e MapStruct são gerenciados/configurados sem dependência do Server.
+- **Contratos de transporte:** os DTOs estão duplicados nos módulos Server e Desktop, sem módulo compartilhado. JSON de referência e testes de serialização/desserialização nos dois módulos verificam equivalência estrutural, enums por nome, campos opcionais nulos, listas vazias e `BigDecimal`. O teste do Desktop também verifica tolerância a campos adicionais. Os mapeadores MapStruct são gerados no build e não acessam serviços, fachadas ou repositórios.
+- **Limite de Environment:** `EnvironmentData` representa as operações unitárias `create/update` da fachada, mas os DTOs HTTP existentes só representam criação em lote (`EnvironmentAddRequest`) e substituição/sincronização (`EnvironmentReplaceRequest`). Não foi criado mapeamento entre esses modelos incompatíveis; o fluxo CRUD unitário precisa de decisão/contrato próprio antes de ser transportado por HTTP. Os fluxos em lote usados pela tela são cobertos.
 - **Serviços** coordenam operações como CRUD, validações, relações e transações. **Repositórios** estendem interfaces Spring Data JPA; não há DAOs JDBC manuais no fluxo atual.
 - **Integração JavaFX/Spring:** `WoodLogixDesktopLauncher` inicia `AppLauncher`; o contexto Spring é aberto no ciclo de vida JavaFX e encerrado em `stop()`. O `FXMLLoader` obtém controladores pelo contexto.
 - **Trabalho assíncrono:** operações de interface que consultam ou alteram dados usam `UiTaskRunner`, com `Task` em executor próprio e atualização da interface nos callbacks JavaFX.
@@ -59,7 +61,7 @@ No **modo individual**, o fluxo aprovado é JavaFX → HTTP → Spring Boot loca
 
 No **modo compartilhado**, JavaFX acessará via HTTP um Spring Boot central na empresa, conectado a PostgreSQL. O acesso não dependerá obrigatoriamente de nuvem ou internet.
 
-Esses fluxos são **decisões de arquitetura, não funcionalidades disponíveis**: Application contém os casos de uso dos catálogos, clientes, ambientes, pipeline, peças e rascunho ativo; o módulo Server existe apenas estruturalmente, sem endpoints, configuração de persistência ou API/cliente HTTP. Entidades JPA, repositórios, adapters, SQLite e Flyway permanecem no Desktop e serão transferidos em etapas posteriores. PostgreSQL também não está configurado. A migração prevista manterá o grafo JPA completo em um único módulo até sua transferência coordenada ao Server, seguida do corte dos consumidores JavaFX para HTTP, sem duas fontes de verdade.
+Esses fluxos são **decisões de arquitetura, não funcionalidades disponíveis**: Application contém os casos de uso dos catálogos, clientes, ambientes, pipeline, peças e rascunho ativo; o Server possui DTOs e mapeadores, mas ainda não possui endpoints HTTP ou configuração de persistência, e o Desktop ainda não possui cliente HTTP. Entidades JPA, repositórios, adapters, SQLite e Flyway permanecem no Desktop e serão transferidos em etapas posteriores. PostgreSQL também não está configurado. A migração prevista manterá o grafo JPA completo em um único módulo até sua transferência coordenada ao Server, seguida do corte dos consumidores JavaFX para HTTP, sem duas fontes de verdade.
 
 ## 4. Funcionalidades
 
@@ -94,6 +96,18 @@ O consumo de chapas é **estimativa por área**, não otimização de corte: o c
 Executado para este registro:
 
 ```text
+mvn -o -pl woodlogix-server,woodlogix-desktop -am -DskipTests compile
+BUILD SUCCESS
+MapStruct gerou e compilou os mapeadores dos dois módulos
+
+mvn -o -pl woodlogix-server,woodlogix-desktop -am '-Dtest=ApiMapperTest' '-Dsurefire.failIfNoSpecifiedTests=false' test
+BUILD SUCCESS
+10 testes de mapeadores (Server 5, Desktop 5): 0 falhas, 0 erros, 0 ignorados
+
+mvn -o test
+BUILD SUCCESS
+202 testes (core 7, application 59, server 10, desktop 126): 0 falhas, 0 erros, 0 ignorados
+
 mvn -o -pl woodlogix-server,woodlogix-desktop -am '-Dtest=TransportDtoJsonTest' '-Dsurefire.failIfNoSpecifiedTests=false' test
 BUILD SUCCESS
 9 testes de contratos JSON (Server 4, Desktop 5): 0 falhas, 0 erros, 0 ignorados
@@ -157,6 +171,7 @@ Grupos existentes:
 - `woodlogix-desktop/.../ProposalPdfServiceTest.java` — 4 testes de conteúdo/exportação PDF e mensagens/currency em inglês e espanhol.
 - `woodlogix-server/.../WoodLogixServerApplicationTest.java` — inicia o contexto com `RANDOM_PORT` e confirma que um servidor HTTP embarcado recebeu uma porta, sem configurar ou exigir banco de dados.
 - `woodlogix-server/.../TransportDtoJsonTest.java` e `woodlogix-desktop/.../TransportDtoJsonTest.java` — validam serialização/desserialização dos contratos DTO contra fixtures JSON equivalentes, incluindo valores decimais, enums, nulos e coleções; o Desktop verifica também campos extras.
+- `woodlogix-server/.../ApiMapperTest.java` e `woodlogix-desktop/.../ApiMapperTest.java` — exercitam as implementações geradas pelo MapStruct sem inicializar Spring nem usar `Mappers.getMapper`; verificam conversões de tipos, `BigDecimal`, nulos, coleções, pipeline completo/ordenado e rascunho ausente.
 - `woodlogix-desktop/.../ConfigLoaderTest.java` — 1 teste de configuração externa.
 - `woodlogix-desktop/.../DeletionAndPipelineCharacterizationTest.java` — 16 testes de caracterização em SQLite temporário: exclusões com FKs reais, associações do pipeline, ordenação por etapa/data, movimentação sem alterar outros campos e rollback de criação após flush.
 - `woodlogix-desktop/.../EnvironmentAndDraftCharacterizationTest.java` — caracteriza sincronização de ambientes e rascunhos; cobre referências ausentes, validações, projeto opcional, fita ausente/obrigatória, substituição de filhos, listas vazias e rollback após flush real com SQLite temporário migrado via Flyway.
