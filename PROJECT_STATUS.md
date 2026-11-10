@@ -197,6 +197,14 @@ Grupos existentes:
 
 ## 6. Limitações e riscos técnicos
 
+### Encerramento da etapa de APIs HTTP dos recursos Application
+
+A etapa de APIs HTTP dos recursos Application existentes está encerrada. Foram concluídas e testadas as APIs de **Materials**, **EdgeBanding**, **Hardware**, **Customer**, **Environment**, **SalesPipeline** e **ProjectWorkpiece**. Não existem outros recursos com casos de uso em Application prontos aguardando apenas a criação de um controller HTTP.
+
+`EstimateDraft` foi deliberadamente adiado porque utiliza o identificador global `"active"`, não possui isolamento entre usuários ou projetos e ainda depende da definição de um modelo definitivo de drafts. `FurnitureItem` e `FurniturePart` permanecem como infraestrutura de persistência e não constituem recursos Application prontos para exposição REST.
+
+`Proposal`/`ProposalVersion` e as APIs de cálculo dependem de uma etapa funcional futura, com definição própria de modelo e ciclo de vida. A próxima grande etapa arquitetural será migrar o Desktop para consumir o Server via HTTP e remover gradualmente o acesso direto à persistência; essa migração não faz parte do encerramento desta etapa.
+
 - **Precisão financeira:** entidades e DTOs de persistência usam `BigDecimal`, mas modelos usados por `PricingEngine` usam `double`. `PricingController` converte dimensões e preços persistidos de `BigDecimal` para `double` antes do cálculo. Para valores monetários, essa representação binária pode introduzir diferenças de precisão; os sete testes atuais usam tolerância numérica em exemplos simples e não estabelecem uma política abrangente de precisão/arredondamento.
 - **Consumo de chapas:** o cálculo por área não considera geometria, rotação, orientação/veio, espessura do corte, margens ou reaproveitamento de retalhos. O valor não deve ser interpretado como plano de corte ou garantia de quantidade de compra.
 - **Escopo do orçamento:** o sistema persiste um rascunho ativo e peças vinculadas a projetos, mas não um histórico de orçamentos emitidos. A proposta PDF exporta o valor comercial salvo no projeto, não o preço sugerido atualizado pelo cálculo do rascunho.
