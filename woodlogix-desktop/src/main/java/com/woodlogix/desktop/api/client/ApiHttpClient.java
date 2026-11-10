@@ -44,11 +44,11 @@ public final class ApiHttpClient {
     }
 
     public <T> T get(String path, TypeReference<T> responseType) {
-        return exchange("GET", path, null, responseType);
+        return exchange("GET", path, null, requireResponseType(responseType));
     }
 
     public <T> T post(String path, Object requestBody, TypeReference<T> responseType) {
-        return exchange("POST", path, requestBody, responseType);
+        return exchange("POST", path, requestBody, requireResponseType(responseType));
     }
 
     public void post(String path, Object requestBody) {
@@ -56,7 +56,7 @@ public final class ApiHttpClient {
     }
 
     public <T> T put(String path, Object requestBody, TypeReference<T> responseType) {
-        return exchange("PUT", path, requestBody, responseType);
+        return exchange("PUT", path, requestBody, requireResponseType(responseType));
     }
 
     public void put(String path, Object requestBody) {
@@ -64,7 +64,7 @@ public final class ApiHttpClient {
     }
 
     public <T> T patch(String path, Object requestBody, TypeReference<T> responseType) {
-        return exchange("PATCH", path, requestBody, responseType);
+        return exchange("PATCH", path, requestBody, requireResponseType(responseType));
     }
 
     public void patch(String path, Object requestBody) {
@@ -194,5 +194,10 @@ public final class ApiHttpClient {
             throw new IllegalArgumentException(name + " must be positive");
         }
         return duration;
+    }
+
+    private static <T> TypeReference<T> requireResponseType(TypeReference<T> responseType) {
+        return Objects.requireNonNull(
+                responseType, "responseType must not be null for response-bearing requests");
     }
 }

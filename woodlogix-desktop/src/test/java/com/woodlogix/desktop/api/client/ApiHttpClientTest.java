@@ -153,9 +153,66 @@ class ApiHttpClientTest {
 
     @Test
     void supportsSuccessfulResponsesWithoutContent() throws Exception {
-        serverClient(exchange -> respond(exchange, 204, ""), Duration.ofSeconds(3));
+        serverClient(exchange -> {
+            exchange.getRequestBody().readAllBytes();
+            respond(exchange, 204, "");
+        }, Duration.ofSeconds(3));
 
+        client().post("materials", new MaterialRequest("MDF", "White",
+                new BigDecimal("18.00"), new BigDecimal("2750.00"),
+                new BigDecimal("1840.00"), new BigDecimal("120.50")));
+        client().put("materials/material-1", new MaterialRequest("MDF", "White",
+                new BigDecimal("18.00"), new BigDecimal("2750.00"),
+                new BigDecimal("1840.00"), new BigDecimal("120.50")));
+        client().patch("projects/project-1/stage",
+                new ChangeSalesStageRequest(SalesStage.QUOTE_SENT));
         client().delete("materials/material-1");
+    }
+
+    @Test
+    void rejectsNullResponseTypesForResponseBearingMethods() {
+        ApiHttpClient client = new ApiHttpClient(
+                URI.create("http://127.0.0.1:1/api/"),
+                Duration.ofSeconds(1),
+                Duration.ofSeconds(1));
+
+        assertNullResponseType(() -> client.get("materials", null));
+        assertNullResponseType(() -> client.post("materials", null, null));
+        assertNullResponseType(() -> client.put("materials/material-1", null, null));
+        assertNullResponseType(() -> client.patch("projects/project-1/stage", null, null));
+    }
+
+    @Test
+    void reportsInvalidJsonInSuccessfulResponseWithStatusAndCause() throws Exception {
+        serverClient(exchange -> respond(exchange, 200, "{not-json"),
+                Duration.ofSeconds(3));
+
+        ApiResponseException failure = assertThrows(ApiResponseException.class,
+                () -> client().get("invalid-response", new TypeReference<>() { }));
+
+        assertEquals(200, failure.statusCode());
+        assertNotNull(failure.getCause());
+    }
+
+    @Test
+    void resolvesPathsAgainstBaseUriWithoutTrailingSlash() throws Exception {
+        AtomicReference<String> requestPath = new AtomicReference<>();
+        AtomicReference<String> hostHeader = new AtomicReference<>();
+        serverClient(exchange -> {
+            requestPath.set(exchange.getRequestURI().getRawPath());
+            hostHeader.set(exchange.getRequestHeaders().getFirst("Host"));
+            respond(exchange, 200, MATERIAL_JSON);
+        }, Duration.ofSeconds(3));
+        int port = server.getAddress().getPort();
+        ApiHttpClient client = new ApiHttpClient(
+                URI.create("http://127.0.0.1:" + port + "/api"),
+                Duration.ofSeconds(1),
+                Duration.ofSeconds(3));
+
+        client.get("materials", new TypeReference<>() { });
+
+        assertEquals("/api/materials", requestPath.get());
+        assertEquals("127.0.0.1:" + port, hostHeader.get());
     }
 
     @Test
@@ -253,6 +310,13 @@ class ApiHttpClientTest {
                 URI.create("http://127.0.0.1:" + server.getAddress().getPort() + "/api/"),
                 Duration.ofSeconds(1),
                 requestTimeout);
+    }
+
+    private static void assertNullResponseType(Runnable request) {
+        NullPointerException failure = assertThrows(NullPointerException.class, request::run);
+
+        assertEquals("responseType must not be null for response-bearing requests",
+                failure.getMessage());
     }
 
     private static void respond(HttpExchange exchange, int status, String body) throws IOException {
