@@ -19,7 +19,7 @@ public class DeleteHardware {
                 throw new HardwareNotFoundException();
             }
             if (hardware.isReferencedByDraft(id)) {
-                throw new IllegalStateException("error.hardware-has-related-records");
+                throw new HardwareInUseException();
             }
             hardware.deleteAndFlush(id);
         });

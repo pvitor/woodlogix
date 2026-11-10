@@ -33,7 +33,8 @@ class DeleteHardwareTest {
     void rejectsReferencedHardwareBeforeDeleting() {
         var fixture = new Fixture();
         fixture.referenced = true;
-        var failure = assertThrows(IllegalStateException.class, () -> fixture.useCase.execute("hardware"));
+        var failure = assertThrows(HardwareInUseException.class,
+                () -> fixture.useCase.execute("hardware"));
         assertEquals("error.hardware-has-related-records", failure.getMessage());
         assertEquals(List.of("begin", "exists:hardware", "referenced:hardware", "rollback"), fixture.events);
     }
