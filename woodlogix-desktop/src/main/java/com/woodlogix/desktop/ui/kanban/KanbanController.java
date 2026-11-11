@@ -7,13 +7,11 @@ import com.woodlogix.desktop.service.CustomerService;
 import com.woodlogix.application.environment.EnvironmentRow;
 import com.woodlogix.application.sales.SalesProjectRow;
 import com.woodlogix.desktop.service.ProposalPdfService;
-import com.woodlogix.desktop.service.SalesPipelineService;
+import com.woodlogix.desktop.service.RemoteEnvironmentService;
+import com.woodlogix.desktop.service.RemoteSalesPipelineService;
 import com.woodlogix.desktop.service.SalesProjectData;
-import com.woodlogix.desktop.service.event.CustomerChangedEvent;
-import com.woodlogix.desktop.service.event.EnvironmentChangedEvent;
 import com.woodlogix.desktop.ui.RoomTypeLabels;
 import com.woodlogix.desktop.ui.UiTaskRunner;
-import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
@@ -31,7 +29,6 @@ import javafx.scene.layout.VBox;
 import javafx.stage.FileChooser;
 import javafx.stage.Window;
 import org.springframework.stereotype.Component;
-import org.springframework.transaction.event.TransactionalEventListener;
 
 import java.math.BigDecimal;
 import java.net.URL;
@@ -49,13 +46,13 @@ public class KanbanController implements Initializable {
     private static final DataFormat PROJECT_ID_FORMAT =
             new DataFormat("application/x-woodlogix-project-id");
     private final CustomerService customerService;
-    private final SalesPipelineService salesPipelineService;
+    private final RemoteEnvironmentService environmentService;
+    private final RemoteSalesPipelineService salesPipelineService;
     private final ProposalPdfService proposalPdfService;
     private final UiTaskRunner taskRunner;
     private final Path proposalDirectory;
     private ResourceBundle messages;
     private Locale locale;
-    private boolean initialized;
 
     @FXML private Label statusLabel;
     @FXML private ComboBox<CustomerRow> customerComboBox;
@@ -68,11 +65,13 @@ public class KanbanController implements Initializable {
 
     public KanbanController(
             CustomerService customerService,
-            SalesPipelineService salesPipelineService,
+            RemoteEnvironmentService environmentService,
+            RemoteSalesPipelineService salesPipelineService,
             ProposalPdfService proposalPdfService,
             UiTaskRunner taskRunner
     ) {
         this.customerService = Objects.requireNonNull(customerService);
+        this.environmentService = Objects.requireNonNull(environmentService);
         this.salesPipelineService = Objects.requireNonNull(salesPipelineService);
         this.proposalPdfService = Objects.requireNonNull(proposalPdfService);
         this.taskRunner = Objects.requireNonNull(taskRunner);
@@ -114,7 +113,6 @@ public class KanbanController implements Initializable {
         validate();
         loadCustomers();
         loadPipeline();
-        initialized = true;
     }
 
     @FXML
@@ -145,20 +143,6 @@ public class KanbanController implements Initializable {
         }, message -> statusLabel.setText(message));
     }
 
-    @TransactionalEventListener
-    public void onCustomerChanged(CustomerChangedEvent event) {
-        if (initialized) {
-            Platform.runLater(this::loadCustomers);
-        }
-    }
-
-    @TransactionalEventListener
-    public void onEnvironmentChanged(EnvironmentChangedEvent event) {
-        if (initialized) {
-            Platform.runLater(() -> loadEnvironments(customerComboBox.getValue()));
-        }
-    }
-
     private void loadCustomers() {
         String selectedCustomerId = customerComboBox.getValue() == null
                 ? null : customerComboBox.getValue().id();
@@ -179,7 +163,7 @@ public class KanbanController implements Initializable {
         }
         String selectedEnvironmentId = environmentComboBox.getValue() == null
                 ? null : environmentComboBox.getValue().id();
-        taskRunner.execute(() -> salesPipelineService.findEnvironments(customer.id()),
+        taskRunner.execute(() -> environmentService.findByCustomer(customer.id()),
                 messages, environments -> {
                     environmentComboBox.setItems(FXCollections.observableArrayList(environments));
                     if (selectedEnvironmentId != null) {
@@ -231,13 +215,7 @@ public class KanbanController implements Initializable {
                 if (event.getDragboard().hasContent(PROJECT_ID_FORMAT)) {
                     String projectId = (String) event.getDragboard()
                             .getContent(PROJECT_ID_FORMAT);
-                    taskRunner.execute(() -> {
-                        salesPipelineService.move(projectId, stage);
-                        return null;
-                    }, messages, ignored -> {
-                        statusLabel.setText(text("status.stage-updated"));
-                        loadPipeline();
-                    }, message -> statusLabel.setText(message));
+                    moveProject(projectId, stage);
                     completed = true;
                 }
                 event.setDropCompleted(completed);
@@ -287,6 +265,16 @@ public class KanbanController implements Initializable {
         return card;
     }
 
+    private void moveProject(String projectId, SalesStage stage) {
+        taskRunner.execute(() -> {
+            salesPipelineService.move(projectId, stage);
+            return null;
+        }, messages, ignored -> {
+            statusLabel.setText(text("status.stage-updated"));
+            loadPipeline();
+        }, message -> statusLabel.setText(message));
+    }
+
     private void exportProposal(SalesProjectRow project) {
         FileChooser chooser = new FileChooser();
         chooser.setTitle(text("proposal.save-title"));
@@ -302,9 +290,12 @@ public class KanbanController implements Initializable {
         if (selectedFile == null) {
             return;
         }
-        Path destination = selectedFile.toPath();
+        exportProposal(project, selectedFile.toPath());
+    }
+
+    private void exportProposal(SalesProjectRow project, Path destination) {
         taskRunner.execute(() -> {
-            proposalPdfService.export(project.id(), destination);
+            proposalPdfService.export(project, destination);
             return destination;
         }, messages, path -> statusLabel.setText(MessageFormat.format(
                 text("status.proposal-exported"), path)),

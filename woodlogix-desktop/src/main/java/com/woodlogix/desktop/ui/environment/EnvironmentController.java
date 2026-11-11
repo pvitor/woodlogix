@@ -4,15 +4,12 @@ import com.woodlogix.core.enums.RoomType;
 import com.woodlogix.application.customer.CustomerRow;
 import com.woodlogix.desktop.service.CustomerService;
 import com.woodlogix.application.environment.EnvironmentRow;
-import com.woodlogix.desktop.service.EnvironmentService;
-import com.woodlogix.desktop.service.event.CustomerChangedEvent;
-import com.woodlogix.desktop.service.event.EnvironmentChangedEvent;
+import com.woodlogix.desktop.service.RemoteEnvironmentService;
 import com.woodlogix.desktop.ui.RoomTypeLabels;
 import com.woodlogix.desktop.ui.UiTaskRunner;
 import javafx.animation.PauseTransition;
 import javafx.beans.property.ReadOnlyObjectWrapper;
 import javafx.beans.property.ReadOnlyStringWrapper;
-import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
@@ -31,7 +28,6 @@ import javafx.scene.layout.FlowPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.shape.SVGPath;
 import org.springframework.stereotype.Component;
-import org.springframework.transaction.event.TransactionalEventListener;
 import javafx.util.Duration;
 import javafx.util.StringConverter;
 
@@ -49,7 +45,7 @@ import java.util.stream.Collectors;
 @Component
 public class EnvironmentController implements Initializable {
     private final CustomerService customerService;
-    private final EnvironmentService environmentService;
+    private final RemoteEnvironmentService environmentService;
     private final UiTaskRunner taskRunner;
     private final Map<RoomType, CheckBox> roomTypeCheckBoxes = new EnumMap<>(RoomType.class);
     private final Map<String, CheckBox> customRoomCheckBoxes = new LinkedHashMap<>();
@@ -74,7 +70,7 @@ public class EnvironmentController implements Initializable {
 
     public EnvironmentController(
             CustomerService customerService,
-            EnvironmentService environmentService,
+            RemoteEnvironmentService environmentService,
             UiTaskRunner taskRunner
     ) {
         this.customerService = Objects.requireNonNull(customerService);
@@ -164,7 +160,7 @@ public class EnvironmentController implements Initializable {
             return;
         }
         List<String> environmentTypes = selectedEnvironmentTypes();
-        taskRunner.execute(() -> environmentService.saveOrUpdateCustomerEnvironments(
+        taskRunner.execute(() -> environmentService.replaceCustomerEnvironments(
                         customerId, environmentTypes),
                 messages, updated -> {
                     clearForm();
@@ -176,20 +172,6 @@ public class EnvironmentController implements Initializable {
     @FXML
     private void cancelEdit() {
         clearForm();
-    }
-
-    @TransactionalEventListener
-    public void onCustomerChanged(CustomerChangedEvent event) {
-        if (initialized) {
-            Platform.runLater(this::loadCustomers);
-        }
-    }
-
-    @TransactionalEventListener
-    public void onEnvironmentChanged(EnvironmentChangedEvent event) {
-        if (initialized) {
-            Platform.runLater(this::loadEnvironments);
-        }
     }
 
     private void initializeRoomTypes() {

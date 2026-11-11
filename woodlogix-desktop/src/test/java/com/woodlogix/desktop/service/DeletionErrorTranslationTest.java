@@ -72,7 +72,7 @@ class DeletionErrorTranslationTest {
         var customerRepository = mock(CustomerRepository.class);
         var environmentRepository = mock(ProjectEnvironmentRepository.class);
         var events = mock(ApplicationEventPublisher.class);
-        var customers = new CustomerService(new CustomerCatalog(
+        var customers = new LocalCustomerService(new CustomerCatalog(
                 new CustomerCatalogAdapter(customerRepository),
                 new CustomerChangeNotifierAdapter(events), new DirectTransactions()));
         var environments = environmentService(customerRepository, environmentRepository, events);

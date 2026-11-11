@@ -13,7 +13,7 @@ import com.woodlogix.desktop.persistence.repository.FurnitureItemRepository;
 import com.woodlogix.desktop.persistence.repository.FurniturePartRepository;
 import com.woodlogix.desktop.persistence.repository.ProjectEnvironmentRepository;
 import com.woodlogix.desktop.service.CustomerData;
-import com.woodlogix.desktop.service.CustomerService;
+import com.woodlogix.desktop.service.LocalCustomerService;
 import com.woodlogix.desktop.service.EdgeBandingData;
 import com.woodlogix.desktop.service.EdgeBandingService;
 import com.woodlogix.application.environment.EnvironmentCatalog;
@@ -148,7 +148,7 @@ class DeletionAndPipelineCharacterizationTest {
 
     @Test
     void deletesUnreferencedRecordsAndRejectsMissingIds() {
-        var customers = context.getBean(CustomerService.class);
+        var customers = context.getBean(LocalCustomerService.class);
         var environments = context.getBean(EnvironmentService.class);
         var materials = context.getBean(MaterialService.class);
         var edges = context.getBean(EdgeBandingService.class);
@@ -182,7 +182,7 @@ class DeletionAndPipelineCharacterizationTest {
 
     @Test
     void customerDeletionIsBlockedByEachKindOfRelatedRecord() {
-        var customers = context.getBean(CustomerService.class);
+        var customers = context.getBean(LocalCustomerService.class);
         var environments = context.getBean(EnvironmentService.class);
         var pipeline = context.getBean(SalesPipelineService.class);
         var customerWithEnvironment = customers.create(new CustomerData("One", null, null, null));
@@ -331,7 +331,7 @@ class DeletionAndPipelineCharacterizationTest {
 
     @Test
     void catalogDeletionIsBlockedByProjectWorkpieceReferences() {
-        var customer = context.getBean(CustomerService.class)
+        var customer = context.getBean(LocalCustomerService.class)
                 .create(new CustomerData("Customer", null, null, null));
         var project = context.getBean(SalesPipelineService.class).create(
                 new SalesProjectData(customer.id(), null, "Project", money("100")));
@@ -390,7 +390,7 @@ class DeletionAndPipelineCharacterizationTest {
 
     @Test
     void customerDeletionRollsBackWhenListenerFailsAfterFlush() {
-        var customers = context.getBean(CustomerService.class);
+        var customers = context.getBean(LocalCustomerService.class);
         var customer = customers.create(new CustomerData("Customer", null, null, null));
         var before = rows("customers");
         var observed = failAfterDeletion(CustomerChangedEvent.class, "customers", customer.id());
@@ -405,7 +405,7 @@ class DeletionAndPipelineCharacterizationTest {
 
     @Test
     void environmentDeletionRollsBackWhenListenerFailsAfterFlush() {
-        var customer = context.getBean(CustomerService.class)
+        var customer = context.getBean(LocalCustomerService.class)
                 .create(new CustomerData("Customer", null, null, null));
         var environments = context.getBean(EnvironmentService.class);
         var environment = environments.create(new EnvironmentData(customer.id(), "Kitchen"));
@@ -424,7 +424,7 @@ class DeletionAndPipelineCharacterizationTest {
 
     @Test
     void createsProjectsWithMatchingOrOptionalEnvironment() {
-        var customers = context.getBean(CustomerService.class);
+        var customers = context.getBean(LocalCustomerService.class);
         var customer = customers.create(new CustomerData("Customer", "11999999999", "test@example.test", null));
         var environment = context.getBean(EnvironmentService.class)
                 .create(new EnvironmentData(customer.id(), "Kitchen"));
@@ -449,7 +449,7 @@ class DeletionAndPipelineCharacterizationTest {
 
     @Test
     void rejectsUnknownCustomerOrEnvironmentAndMismatchedEnvironment() {
-        var customers = context.getBean(CustomerService.class);
+        var customers = context.getBean(LocalCustomerService.class);
         var first = customers.create(new CustomerData("First", null, null, null));
         var second = customers.create(new CustomerData("Second", null, null, null));
         var environment = context.getBean(EnvironmentService.class)
@@ -468,7 +468,7 @@ class DeletionAndPipelineCharacterizationTest {
 
     @Test
     void movesProjectWithoutChangingOtherPersistedFieldsAndRejectsInvalidMoves() {
-        var customer = context.getBean(CustomerService.class)
+        var customer = context.getBean(LocalCustomerService.class)
                 .create(new CustomerData("Customer", "11999999999", "test@example.test", null));
         var environment = context.getBean(EnvironmentService.class)
                 .create(new EnvironmentData(customer.id(), "Kitchen"));
@@ -495,7 +495,7 @@ class DeletionAndPipelineCharacterizationTest {
 
     @Test
     void pipelineListsStagesAndProjectsInCreatedAtDescendingOrder() {
-        var customer = context.getBean(CustomerService.class)
+        var customer = context.getBean(LocalCustomerService.class)
                 .create(new CustomerData("Customer", null, null, null));
         var pipeline = context.getBean(SalesPipelineService.class);
         var older = pipeline.create(new SalesProjectData(customer.id(), null, "Older", money("10")));
@@ -518,7 +518,7 @@ class DeletionAndPipelineCharacterizationTest {
 
     @Test
     void rollsBackProjectCreationWhenPersistenceFailsAfterFlush() {
-        var customer = context.getBean(CustomerService.class)
+        var customer = context.getBean(LocalCustomerService.class)
                 .create(new CustomerData("Customer", null, null, null));
         var before = rows("sales_projects");
         var pipeline = context.getBean(SalesPipeline.class);

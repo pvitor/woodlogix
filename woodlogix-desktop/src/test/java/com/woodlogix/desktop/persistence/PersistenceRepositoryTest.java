@@ -25,7 +25,7 @@ import com.woodlogix.desktop.persistence.repository.HardwareRepository;
 import com.woodlogix.desktop.persistence.repository.MaterialRepository;
 import com.woodlogix.desktop.persistence.repository.ProjectWorkpieceRepository;
 import com.woodlogix.desktop.service.ProposalPdfService;
-import com.woodlogix.desktop.service.CustomerService;
+import com.woodlogix.desktop.service.LocalCustomerService;
 import com.woodlogix.desktop.service.CustomerData;
 import com.woodlogix.desktop.service.EnvironmentService;
 import com.woodlogix.desktop.service.EnvironmentData;
@@ -132,7 +132,7 @@ class PersistenceRepositoryTest {
 
     @Test
     void persistsPhaseTwoSupplyCatalogsAndProjectWorkpiecesWithCrudAndReferences() {
-        CustomerService customerService = applicationContext.getBean(CustomerService.class);
+        LocalCustomerService customerService = applicationContext.getBean(LocalCustomerService.class);
         SalesPipelineService salesPipelineService =
                 applicationContext.getBean(SalesPipelineService.class);
         MaterialService materialService = applicationContext.getBean(MaterialService.class);
@@ -207,7 +207,7 @@ class PersistenceRepositoryTest {
 
     @Test
     void persistsActiveEstimateDraftWithOptionalProjectAndOperatingParameters() {
-        CustomerService customerService = applicationContext.getBean(CustomerService.class);
+        LocalCustomerService customerService = applicationContext.getBean(LocalCustomerService.class);
         SalesPipelineService salesPipelineService =
                 applicationContext.getBean(SalesPipelineService.class);
         MaterialService materialService = applicationContext.getBean(MaterialService.class);
@@ -265,7 +265,7 @@ class PersistenceRepositoryTest {
 
     @Test
     void searchesCustomersByPartialNameEmailOrPhoneIgnoringCase() {
-        CustomerService customerService = applicationContext.getBean(CustomerService.class);
+        LocalCustomerService customerService = applicationContext.getBean(LocalCustomerService.class);
         var first = customerService.create(
                 new CustomerData("Ana Carvalho", "11999991111", "ana@example.com", null));
         var second = customerService.create(
@@ -287,7 +287,7 @@ class PersistenceRepositoryTest {
 
     @Test
     void createsSelectedRoomTypesForCustomerInOneOperation() {
-        CustomerService customerService = applicationContext.getBean(CustomerService.class);
+        LocalCustomerService customerService = applicationContext.getBean(LocalCustomerService.class);
         EnvironmentService environmentService = applicationContext.getBean(EnvironmentService.class);
         var customer = customerService.create(
                 new CustomerData("Room catalog customer", null, null, null));
@@ -312,7 +312,7 @@ class PersistenceRepositoryTest {
 
     @Test
     void synchronizesCustomerEnvironmentsAsAnExactDeduplicatedList() {
-        CustomerService customerService = applicationContext.getBean(CustomerService.class);
+        LocalCustomerService customerService = applicationContext.getBean(LocalCustomerService.class);
         EnvironmentService environmentService = applicationContext.getBean(EnvironmentService.class);
         var customer = customerService.create(
                 new CustomerData("Environment synchronization customer", null, null, null));
@@ -341,7 +341,7 @@ class PersistenceRepositoryTest {
 
     @Test
     void deletesAllEnvironmentsForCustomerInOneOperation() {
-        CustomerService customerService = applicationContext.getBean(CustomerService.class);
+        LocalCustomerService customerService = applicationContext.getBean(LocalCustomerService.class);
         EnvironmentService environmentService = applicationContext.getBean(EnvironmentService.class);
         var customer = customerService.create(
                 new CustomerData("Bulk environment deletion customer", null, null, null));
@@ -355,7 +355,7 @@ class PersistenceRepositoryTest {
 
     @Test
     void environmentQueriesReturnUniqueRoomsForCustomer() {
-        CustomerService customerService = applicationContext.getBean(CustomerService.class);
+        LocalCustomerService customerService = applicationContext.getBean(LocalCustomerService.class);
         EnvironmentService environmentService = applicationContext.getBean(EnvironmentService.class);
         var customer = customerService.create(
                 new CustomerData("Duplicate environment customer", null, null, null));
@@ -372,7 +372,7 @@ class PersistenceRepositoryTest {
 
     @Test
     void environmentBatchReplacementRollsBackWhenRemovedRoomHasParts() {
-        CustomerService customerService = applicationContext.getBean(CustomerService.class);
+        LocalCustomerService customerService = applicationContext.getBean(LocalCustomerService.class);
         EnvironmentService environmentService = applicationContext.getBean(EnvironmentService.class);
         var customer = customerService.create(
                 new CustomerData("Referenced environment customer", null, null, null));
@@ -406,7 +406,7 @@ class PersistenceRepositoryTest {
     @Test
     void roomCatalogCreationRequiresAtLeastOneRoom() {
         EnvironmentService environmentService = applicationContext.getBean(EnvironmentService.class);
-        CustomerService customerService = applicationContext.getBean(CustomerService.class);
+        LocalCustomerService customerService = applicationContext.getBean(LocalCustomerService.class);
         var customer = customerService.create(
                 new CustomerData("Empty room selection", null, null, null));
 
@@ -417,7 +417,7 @@ class PersistenceRepositoryTest {
 
     @Test
     void createsCustomRoomAndPreventsDuplicatesAgainstCatalogAndExistingRooms() {
-        CustomerService customerService = applicationContext.getBean(CustomerService.class);
+        LocalCustomerService customerService = applicationContext.getBean(LocalCustomerService.class);
         EnvironmentService environmentService = applicationContext.getBean(EnvironmentService.class);
         var customer = customerService.create(
                 new CustomerData("Custom room customer", null, null, null));
@@ -458,7 +458,7 @@ class PersistenceRepositoryTest {
 
     @Test
     void servicesRejectInvalidCustomerAndEnvironmentDataBeforePersistence() {
-        CustomerService customerService = applicationContext.getBean(CustomerService.class);
+        LocalCustomerService customerService = applicationContext.getBean(LocalCustomerService.class);
         EnvironmentService environmentService = applicationContext.getBean(EnvironmentService.class);
 
         assertThrows(ConstraintViolationException.class, () -> customerService.create(
@@ -566,7 +566,7 @@ class PersistenceRepositoryTest {
 
     @Test
     void updatesAndDeletesCustomerAndEnvironment() {
-        CustomerService customerService = applicationContext.getBean(CustomerService.class);
+        LocalCustomerService customerService = applicationContext.getBean(LocalCustomerService.class);
         EnvironmentService environmentService = applicationContext.getBean(EnvironmentService.class);
 
         var customer = customerService.create(new CustomerData("Before update", null, null, null));
@@ -593,7 +593,7 @@ class PersistenceRepositoryTest {
 
     @Test
     void updateAndDeleteFailWithEntityNotFoundForUnknownIds() {
-        CustomerService customerService = applicationContext.getBean(CustomerService.class);
+        LocalCustomerService customerService = applicationContext.getBean(LocalCustomerService.class);
         EnvironmentService environmentService = applicationContext.getBean(EnvironmentService.class);
         assertThrows(EntityNotFoundException.class, () ->
                 customerService.update("missing", new CustomerData("Name", null, null, null)));

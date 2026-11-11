@@ -3,12 +3,10 @@ package com.woodlogix.desktop.ui.client;
 import com.woodlogix.desktop.service.CustomerData;
 import com.woodlogix.application.customer.CustomerRow;
 import com.woodlogix.desktop.service.CustomerService;
-import com.woodlogix.desktop.service.event.CustomerChangedEvent;
 import com.woodlogix.desktop.ui.UiTaskRunner;
 import javafx.animation.PauseTransition;
 import javafx.beans.property.ReadOnlyStringWrapper;
 import javafx.collections.FXCollections;
-import javafx.application.Platform;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
 import javafx.geometry.Pos;
@@ -22,7 +20,6 @@ import javafx.scene.control.TextField;
 import javafx.scene.layout.HBox;
 import javafx.scene.shape.SVGPath;
 import org.springframework.stereotype.Component;
-import org.springframework.transaction.event.TransactionalEventListener;
 import javafx.util.Duration;
 
 import java.net.URL;
@@ -38,7 +35,6 @@ public class CustomerController implements Initializable {
     private final PauseTransition searchDebounce = new PauseTransition(Duration.millis(250));
     private ResourceBundle messages;
     private String editingCustomerId;
-    private boolean initialized;
 
     @FXML private Label statusLabel;
     @FXML private TextField searchField;
@@ -85,7 +81,6 @@ public class CustomerController implements Initializable {
         actionsColumn.setMinWidth(88.0);
         actionsColumn.setPrefWidth(100.0);
         validate();
-        initialized = true;
         loadCustomers();
     }
 
@@ -108,13 +103,6 @@ public class CustomerController implements Initializable {
     @FXML
     private void cancelEdit() {
         clearForm();
-    }
-
-    @TransactionalEventListener
-    public void onCustomerChanged(CustomerChangedEvent event) {
-        if (initialized) {
-            Platform.runLater(this::loadCustomers);
-        }
     }
 
     private void loadCustomers() {

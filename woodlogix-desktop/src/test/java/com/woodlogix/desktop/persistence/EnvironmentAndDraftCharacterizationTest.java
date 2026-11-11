@@ -9,7 +9,7 @@ import com.woodlogix.desktop.persistence.entity.ProjectEnvironmentEntity;
 import com.woodlogix.desktop.persistence.repository.EstimateDraftRepository;
 import com.woodlogix.desktop.persistence.repository.ProjectEnvironmentRepository;
 import com.woodlogix.desktop.service.CustomerData;
-import com.woodlogix.desktop.service.CustomerService;
+import com.woodlogix.desktop.service.LocalCustomerService;
 import com.woodlogix.desktop.service.EdgeBandingData;
 import com.woodlogix.desktop.service.EdgeBandingService;
 import com.woodlogix.application.environment.EnvironmentRow;
@@ -84,7 +84,7 @@ class EnvironmentAndDraftCharacterizationTest {
 
     @Test
     void synchronizesNormalizedNamesAndPreservesIdsAcrossChanges() {
-        var customer = context.getBean(CustomerService.class)
+        var customer = context.getBean(LocalCustomerService.class)
                 .create(new CustomerData("Customer", null, null, null));
         var service = context.getBean(EnvironmentService.class);
         var initial = service.saveOrUpdateCustomerEnvironments(
@@ -112,7 +112,7 @@ class EnvironmentAndDraftCharacterizationTest {
 
     @Test
     void rejectsReplacingEnvironmentReferencedBySalesProject() {
-        var customer = context.getBean(CustomerService.class)
+        var customer = context.getBean(LocalCustomerService.class)
                 .create(new CustomerData("Customer", null, null, null));
         var environments = context.getBean(EnvironmentService.class);
         var original = environments.saveOrUpdateCustomerEnvironments(
@@ -132,7 +132,7 @@ class EnvironmentAndDraftCharacterizationTest {
 
     @Test
     void rollsBackEnvironmentReplacementAfterRealFlushedWrites() {
-        var customer = context.getBean(CustomerService.class)
+        var customer = context.getBean(LocalCustomerService.class)
                 .create(new CustomerData("Customer", null, null, null));
         var service = context.getBean(EnvironmentService.class);
         var original = service.saveOrUpdateCustomerEnvironments(
@@ -317,7 +317,7 @@ class EnvironmentAndDraftCharacterizationTest {
     }
 
     private DraftFixture createDraftFixture() {
-        var customer = context.getBean(CustomerService.class)
+        var customer = context.getBean(LocalCustomerService.class)
                 .create(new CustomerData("Customer", null, null, null));
         var project = context.getBean(SalesPipelineService.class).create(
                 new SalesProjectData(customer.id(), null, "Project", new BigDecimal("1200")));

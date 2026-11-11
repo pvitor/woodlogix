@@ -60,6 +60,12 @@ public class ProposalPdfService {
     public void export(String projectId, java.nio.file.Path destination) throws IOException {
         Objects.requireNonNull(destination, "destination must not be null");
         SalesProjectRow project = salesPipelineService.findById(projectId);
+        export(project, destination);
+    }
+
+    public void export(SalesProjectRow project, java.nio.file.Path destination) throws IOException {
+        Objects.requireNonNull(project, "project must not be null");
+        Objects.requireNonNull(destination, "destination must not be null");
         java.nio.file.Path absolutePath = destination.toAbsolutePath().normalize();
         java.nio.file.Path parent = absolutePath.getParent();
         if (parent != null) {

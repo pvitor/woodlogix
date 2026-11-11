@@ -8,6 +8,7 @@ import com.woodlogix.application.workpiece.ProjectWorkpieceRow;
 import com.woodlogix.core.enums.SalesStage;
 import com.woodlogix.core.model.HardwareUsage;
 import com.woodlogix.desktop.service.*;
+import com.woodlogix.desktop.ui.JavaFxTestSupport;
 import com.woodlogix.desktop.ui.UiTaskRunner;
 import javafx.application.Platform;
 import javafx.fxml.FXMLLoader;
@@ -25,7 +26,6 @@ import java.math.BigDecimal;
 import java.util.List;
 import java.util.Locale;
 import java.util.ResourceBundle;
-import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.FutureTask;
 import java.util.concurrent.TimeUnit;
 
@@ -47,12 +47,7 @@ class PricingControllerMaterialTest {
 
     @BeforeAll
     static void startJavaFx() throws Exception {
-        var started = new CountDownLatch(1);
-        Platform.startup(() -> {
-            Platform.setImplicitExit(false);
-            started.countDown();
-        });
-        assertTrue(started.await(20, TimeUnit.SECONDS));
+        JavaFxTestSupport.start();
     }
 
     @BeforeEach

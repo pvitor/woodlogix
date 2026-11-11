@@ -6,7 +6,7 @@ import com.woodlogix.application.edgebanding.EdgeBandingInput;
 import com.woodlogix.application.edgebanding.EdgeBandingRow;
 import com.woodlogix.desktop.WoodLogixApplication;
 import com.woodlogix.desktop.service.CustomerData;
-import com.woodlogix.desktop.service.CustomerService;
+import com.woodlogix.desktop.service.LocalCustomerService;
 import com.woodlogix.desktop.service.EdgeBandingData;
 import com.woodlogix.desktop.service.EdgeBandingService;
 import com.woodlogix.desktop.service.EstimateDraftData;
@@ -284,7 +284,7 @@ class EdgeBandingCatalogIntegrationTest {
     }
 
     private String createProject() {
-        var customer = context.getBean(CustomerService.class)
+        var customer = context.getBean(LocalCustomerService.class)
                 .create(new CustomerData("Customer", null, null, null));
         return context.getBean(SalesPipelineService.class).create(
                 new SalesProjectData(customer.id(), null, "Project", new BigDecimal("1200"))).id();

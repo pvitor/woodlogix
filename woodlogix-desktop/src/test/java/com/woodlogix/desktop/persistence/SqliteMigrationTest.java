@@ -2,7 +2,7 @@ package com.woodlogix.desktop.persistence;
 
 import com.woodlogix.desktop.WoodLogixApplication;
 import com.woodlogix.desktop.service.CustomerData;
-import com.woodlogix.desktop.service.CustomerService;
+import com.woodlogix.desktop.service.LocalCustomerService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.springframework.boot.WebApplicationType;
@@ -28,7 +28,7 @@ class SqliteMigrationTest {
         Path database = temporaryDirectory.resolve("reopen.db");
         String customerId;
         try (var first = start(database)) {
-            customerId = first.getBean(CustomerService.class)
+            customerId = first.getBean(LocalCustomerService.class)
                     .create(new CustomerData("Customer", null, null, null)).id();
             var jdbc = new JdbcTemplate(first.getBean(DataSource.class));
             assertEquals(1, jdbc.queryForObject(

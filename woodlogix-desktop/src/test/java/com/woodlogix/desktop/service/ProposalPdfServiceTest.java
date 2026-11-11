@@ -14,6 +14,7 @@ import java.util.ResourceBundle;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 class ProposalPdfServiceTest {
@@ -46,7 +47,7 @@ class ProposalPdfServiceTest {
     @Test
     void exportsProposalUsingRequestedLanguageAndCurrency() throws Exception {
         SalesPipelineService pipelineService = mock(SalesPipelineService.class);
-        when(pipelineService.findById("project-1")).thenReturn(new SalesProjectRow(
+        SalesProjectRow project = new SalesProjectRow(
                 "project-1",
                 "Custom kitchen",
                 "Test Customer",
@@ -55,7 +56,8 @@ class ProposalPdfServiceTest {
                 "Kitchen",
                 new BigDecimal("12500.00"),
                 SalesStage.QUOTE_SENT
-        ));
+        );
+        when(pipelineService.findById("project-1")).thenReturn(project);
         ProposalPdfService pdfService = new ProposalPdfService(pipelineService, Locale.US);
         Path destination = temporaryDirectory.resolve("proposal-en.pdf");
 
@@ -66,6 +68,34 @@ class ProposalPdfServiceTest {
             assertTrue(text.contains("SALES PROPOSAL"));
             assertTrue(text.contains("CUSTOMER"));
             assertTrue(text.contains("Custom kitchen"));
+            assertTrue(text.contains("Quote Sent"));
+            assertTrue(text.contains("$12,500.00"));
+        }
+    }
+
+    @Test
+    void exportsProposalFromLoadedProjectWithoutConsultingPipeline() throws Exception {
+        SalesPipelineService pipelineService = mock(SalesPipelineService.class);
+        SalesProjectRow project = new SalesProjectRow(
+                "project-remote",
+                "Remote kitchen",
+                "Remote Customer",
+                "customer@example.test",
+                "+1-555-0100",
+                "Kitchen",
+                new BigDecimal("12500.00"),
+                SalesStage.QUOTE_SENT
+        );
+        ProposalPdfService pdfService = new ProposalPdfService(pipelineService, Locale.US);
+        Path destination = temporaryDirectory.resolve("proposal-loaded.pdf");
+
+        pdfService.export(project, destination);
+
+        verifyNoInteractions(pipelineService);
+        try (var document = Loader.loadPDF(destination.toFile())) {
+            String text = new PDFTextStripper().getText(document);
+            assertTrue(text.contains("Remote kitchen"));
+            assertTrue(text.contains("Remote Customer"));
             assertTrue(text.contains("Quote Sent"));
             assertTrue(text.contains("$12,500.00"));
         }

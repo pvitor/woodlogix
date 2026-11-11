@@ -8,7 +8,7 @@ import com.woodlogix.application.workpiece.ProjectWorkpiecePort;
 import com.woodlogix.application.workpiece.ProjectWorkpieceRow;
 import com.woodlogix.desktop.WoodLogixApplication;
 import com.woodlogix.desktop.service.CustomerData;
-import com.woodlogix.desktop.service.CustomerService;
+import com.woodlogix.desktop.service.LocalCustomerService;
 import com.woodlogix.desktop.service.EdgeBandingData;
 import com.woodlogix.desktop.service.EdgeBandingService;
 import com.woodlogix.desktop.service.MaterialData;
@@ -228,7 +228,7 @@ class ProjectWorkpieceIntegrationTest {
     }
 
     private ReferenceFixture references() {
-        var customer = context.getBean(CustomerService.class)
+        var customer = context.getBean(LocalCustomerService.class)
                 .create(new CustomerData("Workpiece customer", null, null, null));
         var project = context.getBean(SalesPipelineService.class)
                 .create(new SalesProjectData(customer.id(), null, "Project", bd("100")));

@@ -1,15 +1,11 @@
 package com.woodlogix.desktop.service;
 
-import com.woodlogix.application.customer.CustomerCatalog;
-import com.woodlogix.application.customer.CustomerInput;
-import com.woodlogix.application.customer.CustomerNotFoundException;
 import com.woodlogix.application.customer.CustomerRow;
-import com.woodlogix.desktop.persistence.SqliteIntegrityErrors;
-import jakarta.persistence.EntityNotFoundException;
+import com.woodlogix.desktop.api.client.CustomerApiClient;
+import com.woodlogix.desktop.api.mapper.CustomerMapper;
 import jakarta.validation.Valid;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.dao.DataAccessException;
 import org.springframework.stereotype.Service;
 import org.springframework.validation.annotation.Validated;
 
@@ -21,56 +17,41 @@ import java.util.Objects;
 public class CustomerService {
     private static final Logger LOGGER = LoggerFactory.getLogger(CustomerService.class);
 
-    private final CustomerCatalog catalog;
+    private final CustomerApiClient client;
+    private final CustomerMapper mapper;
 
-    public CustomerService(CustomerCatalog catalog) {
-        this.catalog = Objects.requireNonNull(catalog);
+    public CustomerService(CustomerApiClient client, CustomerMapper mapper) {
+        this.client = Objects.requireNonNull(client);
+        this.mapper = Objects.requireNonNull(mapper);
     }
 
     public List<CustomerRow> findAll() {
-        return catalog.findAll();
+        return client.findAll().stream().map(mapper::toRow).toList();
     }
 
     public List<CustomerRow> search(String searchTerm) {
-        return catalog.search(searchTerm);
+        return client.search(searchTerm).stream().map(mapper::toRow).toList();
     }
 
     public List<CustomerRow> findByName(String name) {
-        return catalog.findByName(name);
+        return client.findByName(name).stream().map(mapper::toRow).toList();
     }
 
     public CustomerRow create(@Valid CustomerData data) {
-        CustomerRow customer = catalog.create(toInput(data));
+        CustomerRow customer = mapper.toRow(client.create(mapper.toRequest(data)));
         LOGGER.info("Customer registered");
         return customer;
     }
 
     public CustomerRow update(String customerId, @Valid CustomerData data) {
-        try {
-            CustomerRow customer = catalog.update(customerId, toInput(data));
-            LOGGER.info("Customer updated");
-            return customer;
-        } catch (CustomerNotFoundException exception) {
-            throw new EntityNotFoundException(exception.getMessage(), exception);
-        }
+        CustomerRow customer = mapper.toRow(
+                client.update(customerId, mapper.toRequest(data)));
+        LOGGER.info("Customer updated");
+        return customer;
     }
 
     public void delete(String customerId) {
-        try {
-            catalog.delete(customerId);
-        } catch (CustomerNotFoundException exception) {
-            throw new EntityNotFoundException(exception.getMessage(), exception);
-        } catch (DataAccessException exception) {
-            if (!SqliteIntegrityErrors.isForeignKeyViolation(exception)) {
-                throw exception;
-            }
-            LOGGER.warn("Customer deletion rejected because related records exist", exception);
-            throw new IllegalStateException("error.customer-has-related-records", exception);
-        }
+        client.delete(customerId);
         LOGGER.info("Customer deleted");
-    }
-
-    private static CustomerInput toInput(CustomerData data) {
-        return new CustomerInput(data.fullName(), data.phone(), data.email(), data.address());
     }
 }

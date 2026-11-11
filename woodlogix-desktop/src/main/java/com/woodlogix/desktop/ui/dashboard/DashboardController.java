@@ -104,7 +104,7 @@ public class DashboardController implements Initializable {
                 .sum();
         opportunityCountLabel.setText(Long.toString(opportunityCount));
         draftStatusLabel.setText(messages.getString(snapshot.hasDraft()
-                ? "dashboard.draft-present" : "dashboard.draft-absent"));
+                ? "dashboard.local-draft-present" : "dashboard.local-draft-absent"));
         renderPipeline(snapshot.pipeline());
         dashboardStatusLabel.setText(messages.getString("dashboard.updated"));
     }

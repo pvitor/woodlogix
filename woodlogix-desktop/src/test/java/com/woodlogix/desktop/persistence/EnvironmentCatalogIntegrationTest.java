@@ -16,7 +16,7 @@ import com.woodlogix.desktop.persistence.repository.FurnitureItemRepository;
 import com.woodlogix.desktop.persistence.repository.FurniturePartRepository;
 import com.woodlogix.desktop.persistence.repository.ProjectEnvironmentRepository;
 import com.woodlogix.desktop.service.CustomerData;
-import com.woodlogix.desktop.service.CustomerService;
+import com.woodlogix.desktop.service.LocalCustomerService;
 import com.woodlogix.desktop.service.EnvironmentData;
 import com.woodlogix.desktop.service.EnvironmentService;
 import com.woodlogix.desktop.service.SalesPipelineService;
@@ -81,7 +81,7 @@ class EnvironmentCatalogIntegrationTest {
         assertEquals(1, jdbc.queryForObject(
                 "SELECT COUNT(*) FROM flyway_schema_history WHERE version = '1' AND success = 1", Integer.class));
         service = context.getBean(EnvironmentService.class);
-        customerId = context.getBean(CustomerService.class)
+        customerId = context.getBean(LocalCustomerService.class)
                 .create(new CustomerData("Customer", null, null, null)).id();
         recorder.events.clear();
     }

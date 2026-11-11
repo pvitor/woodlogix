@@ -10,7 +10,7 @@ import com.woodlogix.desktop.persistence.entity.FurnitureItemEntity;
 import com.woodlogix.desktop.persistence.repository.CustomerRepository;
 import com.woodlogix.desktop.persistence.repository.FurnitureItemRepository;
 import com.woodlogix.desktop.service.CustomerData;
-import com.woodlogix.desktop.service.CustomerService;
+import com.woodlogix.desktop.service.LocalCustomerService;
 import com.woodlogix.desktop.service.EnvironmentData;
 import com.woodlogix.desktop.service.EnvironmentService;
 import com.woodlogix.desktop.service.SalesPipelineService;
@@ -80,7 +80,7 @@ class CustomerCatalogIntegrationTest {
 
     @Test
     void persistsUpdatesAndSearchesCustomers() {
-        var service = context.getBean(CustomerService.class);
+        var service = context.getBean(LocalCustomerService.class);
         var ana = service.create(new CustomerData("Ana Carvalho", "11999991111", "ana@example.com", "Street 1"));
         var bruno = service.create(new CustomerData("Bruno Lima", "21988887777", "bruno@wood.test", null));
         assertNotNull(ana.id());
@@ -107,7 +107,7 @@ class CustomerCatalogIntegrationTest {
 
     @Test
     void validatesFacadeAndMissingIdsWithoutPersistingOrNotifying() {
-        var service = context.getBean(CustomerService.class);
+        var service = context.getBean(LocalCustomerService.class);
         for (var invalid : List.of(new CustomerData(" ", null, null, null),
                 new CustomerData("N", "invalid phone", null, null),
                 new CustomerData("N", null, "invalid-email", null))) {
@@ -123,7 +123,7 @@ class CustomerCatalogIntegrationTest {
 
     @Test
     void afterCommitListenersRunOnlyAfterCommitForEachOperation() {
-        var service = context.getBean(CustomerService.class);
+        var service = context.getBean(LocalCustomerService.class);
         var customer = service.create(new CustomerData("First", null, null, null));
         assertEquals(List.of("customers=First"), recorder.events);
         service.update(customer.id(), new CustomerData("Second", null, null, null));
@@ -136,7 +136,7 @@ class CustomerCatalogIntegrationTest {
 
     @Test
     void externalTransactionDefersNotificationsUntilItCommits() {
-        var service = context.getBean(CustomerService.class);
+        var service = context.getBean(LocalCustomerService.class);
         var template = new TransactionTemplate(context.getBean(PlatformTransactionManager.class));
         template.executeWithoutResult(status -> {
             var customer = service.create(new CustomerData("Joined", null, null, null));
@@ -149,7 +149,7 @@ class CustomerCatalogIntegrationTest {
 
     @Test
     void externalTransactionRollbackRevertsDataWithoutNotifications() {
-        var service = context.getBean(CustomerService.class);
+        var service = context.getBean(LocalCustomerService.class);
         var existing = service.create(new CustomerData("Existing", null, null, null));
         recorder.events.clear();
         var before = rows("customers");
@@ -165,7 +165,7 @@ class CustomerCatalogIntegrationTest {
 
     @Test
     void physicalForeignKeyBlocksDeletionForEachKindOfRelatedRecord() {
-        var service = context.getBean(CustomerService.class);
+        var service = context.getBean(LocalCustomerService.class);
         var withEnvironment = service.create(new CustomerData("One", null, null, null));
         context.getBean(EnvironmentService.class).create(new EnvironmentData(withEnvironment.id(), "Kitchen"));
         var withProject = service.create(new CustomerData("Two", null, null, null));
@@ -195,7 +195,7 @@ class CustomerCatalogIntegrationTest {
 
     @Test
     void propagatesNonForeignKeyDeletionFailureWithoutTranslationOrNotification() {
-        var service = context.getBean(CustomerService.class);
+        var service = context.getBean(LocalCustomerService.class);
         var customer = service.create(new CustomerData("Customer", null, null, null));
         recorder.events.clear();
         var before = rows("customers");
@@ -218,7 +218,7 @@ class CustomerCatalogIntegrationTest {
 
     @Test
     void rollsBackFlushedWriteAndPropagatesNonForeignKeyFailureWithoutNotification() {
-        var service = context.getBean(CustomerService.class);
+        var service = context.getBean(LocalCustomerService.class);
         var customer = service.create(new CustomerData("Original", null, null, null));
         recorder.events.clear();
         var before = rows("customers");
@@ -252,7 +252,7 @@ class CustomerCatalogIntegrationTest {
 
     @Test
     void rollsBackEarlierFlushedUpdateWhenDeleteViolatesForeignKey() {
-        var service = context.getBean(CustomerService.class);
+        var service = context.getBean(LocalCustomerService.class);
         var customer = service.create(new CustomerData("Original", null, null, null));
         context.getBean(EnvironmentService.class).create(new EnvironmentData(customer.id(), "Kitchen"));
         recorder.events.clear();
