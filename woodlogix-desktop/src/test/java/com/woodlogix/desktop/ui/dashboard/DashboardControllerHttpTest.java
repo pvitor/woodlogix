@@ -1,13 +1,17 @@
 package com.woodlogix.desktop.ui.dashboard;
 
+import com.woodlogix.application.sales.SalesProjectRow;
+import com.woodlogix.core.enums.SalesStage;
 import com.woodlogix.desktop.service.CustomerService;
 import com.woodlogix.desktop.service.EstimateDraftService;
-import com.woodlogix.desktop.service.SalesPipelineService;
+import com.woodlogix.desktop.service.RemoteSalesPipelineService;
 import com.woodlogix.desktop.ui.JavaFxTestSupport;
 import com.woodlogix.desktop.ui.UiTaskRunner;
 import javafx.application.Platform;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.control.Label;
+import javafx.scene.layout.HBox;
+import javafx.scene.layout.VBox;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.springframework.test.util.ReflectionTestUtils;
@@ -23,6 +27,7 @@ import java.util.function.Consumer;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 class DashboardControllerHttpTest {
@@ -39,7 +44,7 @@ class DashboardControllerHttpTest {
                         "server-1", "Ada", null, null, null),
                 new com.woodlogix.application.customer.CustomerRow(
                         "server-2", "Bruno", null, null, null)));
-        SalesPipelineService pipelineService = mock(SalesPipelineService.class);
+        RemoteSalesPipelineService pipelineService = mock(RemoteSalesPipelineService.class);
         EstimateDraftService draftService = mock(EstimateDraftService.class);
         when(pipelineService.findPipeline()).thenReturn(Map.of());
         when(draftService.findActiveDraft()).thenReturn(Optional.empty());
@@ -51,13 +56,69 @@ class DashboardControllerHttpTest {
         });
 
         assertEquals("2", label(controller, "customerCountLabel").getText());
+        verify(pipelineService).findPipeline();
+        verify(draftService).findActiveDraft();
+    }
+
+    @Test
+    void rendersRemotePipelineOpportunitiesByStage() throws Exception {
+        CustomerService customers = mock(CustomerService.class);
+        RemoteSalesPipelineService pipelineService = mock(RemoteSalesPipelineService.class);
+        EstimateDraftService draftService = mock(EstimateDraftService.class);
+        SalesProjectRow contactProject = new SalesProjectRow(
+                "project-1", "Kitchen", "Ada", null, null, null, null,
+                SalesStage.CONTACT);
+        SalesProjectRow negotiationProject = new SalesProjectRow(
+                "project-2", "Office", "Bruno", null, null, null, null,
+                SalesStage.NEGOTIATION);
+        when(customers.findAll()).thenReturn(List.of());
+        when(pipelineService.findPipeline()).thenReturn(Map.of(
+                SalesStage.CONTACT, List.of(contactProject),
+                SalesStage.NEGOTIATION, List.of(negotiationProject)));
+        when(draftService.findActiveDraft()).thenReturn(Optional.empty());
+        DashboardController controller = loadController(customers, pipelineService, draftService);
+
+        fx(() -> {
+            controller.refreshData();
+            return null;
+        });
+
+        assertEquals("2", label(controller, "opportunityCountLabel").getText());
+        assertEquals("1", stageCount(controller, 0).getText());
+        assertEquals("1", stageCount(controller, 3).getText());
+        verify(pipelineService).findPipeline();
+        verify(draftService).findActiveDraft();
+    }
+
+    @Test
+    void rendersEmptyStateForEmptyRemotePipeline() throws Exception {
+        CustomerService customers = mock(CustomerService.class);
+        RemoteSalesPipelineService pipelineService = mock(RemoteSalesPipelineService.class);
+        EstimateDraftService draftService = mock(EstimateDraftService.class);
+        when(customers.findAll()).thenReturn(List.of());
+        when(pipelineService.findPipeline()).thenReturn(Map.of());
+        when(draftService.findActiveDraft()).thenReturn(Optional.empty());
+        DashboardController controller = loadController(customers, pipelineService, draftService);
+
+        fx(() -> {
+            controller.refreshData();
+            return null;
+        });
+
+        assertEquals("0", label(controller, "opportunityCountLabel").getText());
+        assertEquals(1, pipeline(controller).getChildren().size());
+        assertEquals(ResourceBundle.getBundle("com.woodlogix.desktop.i18n.messages")
+                        .getString("dashboard.pipeline-empty"),
+                ((Label) pipeline(controller).getChildren().get(0)).getText());
+        verify(pipelineService).findPipeline();
+        verify(draftService).findActiveDraft();
     }
 
     @Test
     void preservesPreviousCountWhenRemoteCustomerLookupFails() throws Exception {
         CustomerService customers = mock(CustomerService.class);
         when(customers.findAll()).thenThrow(new RuntimeException("server unavailable"));
-        SalesPipelineService pipelineService = mock(SalesPipelineService.class);
+        RemoteSalesPipelineService pipelineService = mock(RemoteSalesPipelineService.class);
         EstimateDraftService draftService = mock(EstimateDraftService.class);
         DashboardController controller = loadController(customers, pipelineService, draftService);
 
@@ -71,9 +132,31 @@ class DashboardControllerHttpTest {
         assertEquals("server unavailable", label(controller, "dashboardStatusLabel").getText());
     }
 
+    @Test
+    void preservesVisibleDataWhenRemotePipelineLookupFails() throws Exception {
+        CustomerService customers = mock(CustomerService.class);
+        RemoteSalesPipelineService pipelineService = mock(RemoteSalesPipelineService.class);
+        EstimateDraftService draftService = mock(EstimateDraftService.class);
+        when(customers.findAll()).thenReturn(List.of());
+        when(pipelineService.findPipeline())
+                .thenThrow(new RuntimeException("pipeline unavailable"));
+        DashboardController controller = loadController(customers, pipelineService, draftService);
+
+        fx(() -> {
+            label(controller, "opportunityCountLabel").setText("previous");
+            label(controller, "dashboardStatusLabel").setText("previous status");
+            controller.refreshData();
+            return null;
+        });
+
+        assertEquals("previous", label(controller, "opportunityCountLabel").getText());
+        assertEquals("pipeline unavailable",
+                label(controller, "dashboardStatusLabel").getText());
+    }
+
     private static DashboardController loadController(
             CustomerService customers,
-            SalesPipelineService pipelineService,
+            RemoteSalesPipelineService pipelineService,
             EstimateDraftService draftService
     ) throws Exception {
         DashboardController controller = new DashboardController(
@@ -100,6 +183,15 @@ class DashboardControllerHttpTest {
 
     private static Label label(DashboardController controller, String field) {
         return (Label) ReflectionTestUtils.getField(controller, field);
+    }
+
+    private static VBox pipeline(DashboardController controller) {
+        return (VBox) ReflectionTestUtils.getField(controller, "pipelineStageList");
+    }
+
+    private static Label stageCount(DashboardController controller, int stageIndex) {
+        HBox row = (HBox) pipeline(controller).getChildren().get(stageIndex);
+        return (Label) row.getChildren().get(2);
     }
 
     private static <T> T fx(Callable<T> action) throws Exception {

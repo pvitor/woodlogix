@@ -2,7 +2,10 @@ package com.woodlogix.desktop.config;
 
 import com.woodlogix.desktop.api.client.ApiHttpClient;
 import com.woodlogix.desktop.api.client.CustomerApiClient;
+import com.woodlogix.desktop.api.client.EdgeBandingApiClient;
 import com.woodlogix.desktop.api.client.EnvironmentApiClient;
+import com.woodlogix.desktop.api.client.HardwareApiClient;
+import com.woodlogix.desktop.api.client.MaterialApiClient;
 import com.woodlogix.desktop.api.client.SalesPipelineApiClient;
 import com.woodlogix.desktop.api.mapper.EnvironmentMapper;
 import com.woodlogix.desktop.api.mapper.SalesPipelineMapper;
@@ -34,6 +37,21 @@ public class ApiClientConfiguration {
     @Bean
     public CustomerApiClient customerApiClient(ApiHttpClient apiHttpClient) {
         return new CustomerApiClient(apiHttpClient);
+    }
+
+    @Bean
+    public MaterialApiClient materialApiClient(ApiHttpClient apiHttpClient) {
+        return new MaterialApiClient(apiHttpClient);
+    }
+
+    @Bean
+    public EdgeBandingApiClient edgeBandingApiClient(ApiHttpClient apiHttpClient) {
+        return new EdgeBandingApiClient(apiHttpClient);
+    }
+
+    @Bean
+    public HardwareApiClient hardwareApiClient(ApiHttpClient apiHttpClient) {
+        return new HardwareApiClient(apiHttpClient);
     }
 
     @Bean

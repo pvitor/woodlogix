@@ -53,6 +53,7 @@ public class KanbanController implements Initializable {
     private final Path proposalDirectory;
     private ResourceBundle messages;
     private Locale locale;
+    private long environmentLoadGeneration;
 
     @FXML private Label statusLabel;
     @FXML private ComboBox<CustomerRow> customerComboBox;
@@ -157,22 +158,28 @@ public class KanbanController implements Initializable {
     }
 
     private void loadEnvironments(CustomerRow customer) {
+        long requestGeneration = ++environmentLoadGeneration;
+        environmentComboBox.getSelectionModel().clearSelection();
+        environmentComboBox.getItems().clear();
         if (customer == null) {
-            environmentComboBox.getItems().clear();
             return;
         }
-        String selectedEnvironmentId = environmentComboBox.getValue() == null
-                ? null : environmentComboBox.getValue().id();
-        taskRunner.execute(() -> environmentService.findByCustomer(customer.id()),
+        String customerId = customer.id();
+        taskRunner.execute(() -> environmentService.findByCustomer(customerId),
                 messages, environments -> {
-                    environmentComboBox.setItems(FXCollections.observableArrayList(environments));
-                    if (selectedEnvironmentId != null) {
-                        environmentComboBox.getSelectionModel().select(environments.stream()
-                                .filter(environment -> environment.id()
-                                        .equals(selectedEnvironmentId))
-                                .findFirst().orElse(null));
+                    if (requestGeneration != environmentLoadGeneration
+                            || customerComboBox.getValue() == null
+                            || !customerId.equals(customerComboBox.getValue().id())) {
+                        return;
                     }
-                }, message -> statusLabel.setText(message));
+                    environmentComboBox.setItems(FXCollections.observableArrayList(environments));
+                }, message -> {
+                    if (requestGeneration == environmentLoadGeneration
+                            && customerComboBox.getValue() != null
+                            && customerId.equals(customerComboBox.getValue().id())) {
+                        statusLabel.setText(message);
+                    }
+                });
     }
 
     private void loadPipeline() {

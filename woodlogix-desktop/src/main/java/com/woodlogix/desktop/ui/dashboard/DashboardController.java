@@ -4,7 +4,7 @@ import com.woodlogix.core.enums.SalesStage;
 import com.woodlogix.application.sales.SalesProjectRow;
 import com.woodlogix.desktop.service.CustomerService;
 import com.woodlogix.desktop.service.EstimateDraftService;
-import com.woodlogix.desktop.service.SalesPipelineService;
+import com.woodlogix.desktop.service.RemoteSalesPipelineService;
 import com.woodlogix.desktop.ui.UiTaskRunner;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
@@ -25,7 +25,7 @@ import java.util.function.Consumer;
 @Component
 public class DashboardController implements Initializable {
     private final CustomerService customerService;
-    private final SalesPipelineService salesPipelineService;
+    private final RemoteSalesPipelineService salesPipelineService;
     private final EstimateDraftService estimateDraftService;
     private final UiTaskRunner taskRunner;
 
@@ -40,7 +40,7 @@ public class DashboardController implements Initializable {
 
     public DashboardController(
             CustomerService customerService,
-            SalesPipelineService salesPipelineService,
+            RemoteSalesPipelineService salesPipelineService,
             EstimateDraftService estimateDraftService,
             UiTaskRunner taskRunner
     ) {

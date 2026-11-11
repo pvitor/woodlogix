@@ -28,6 +28,7 @@ public class ServerDatabaseConfiguration {
 
         SQLiteConfig configuration = new SQLiteConfig();
         configuration.enforceForeignKeys(true);
+        configuration.setBusyTimeout(5000);
         SQLiteDataSource dataSource = new SQLiteDataSource(configuration);
         dataSource.setUrl("jdbc:sqlite:" + path);
         return dataSource;

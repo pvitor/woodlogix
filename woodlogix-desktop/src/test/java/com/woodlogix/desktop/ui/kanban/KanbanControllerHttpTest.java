@@ -23,6 +23,7 @@ import org.springframework.test.util.ReflectionTestUtils;
 
 import java.math.BigDecimal;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -33,6 +34,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
@@ -44,6 +46,11 @@ class KanbanControllerHttpTest {
     private static final EnvironmentRow ENVIRONMENT =
             new EnvironmentRow("server-environment", "server-customer",
                     "Ada Lovelace", "Kitchen");
+    private static final CustomerRow SECOND_CUSTOMER =
+            new CustomerRow("second-customer", "Grace Hopper", null, null, null);
+    private static final EnvironmentRow SECOND_ENVIRONMENT =
+            new EnvironmentRow("second-environment", "second-customer",
+                    "Grace Hopper", "Office");
     private static final SalesProjectRow PROJECT =
             new SalesProjectRow("server-project", "Kitchen", "Ada Lovelace",
                     null, null, "Kitchen", BigDecimal.TEN, SalesStage.CONTACT);
@@ -143,14 +150,112 @@ class KanbanControllerHttpTest {
         assertTrue(columns(controller).getChildren().isEmpty());
     }
 
+    @Test
+    void clearsPreviousEnvironmentsImmediatelyWhenCustomerChanges() throws Exception {
+        DeferredUiTaskRunner runner = new DeferredUiTaskRunner();
+        KanbanController controller = loadController(mock(CustomerService.class),
+                mock(RemoteEnvironmentService.class), mock(RemoteSalesPipelineService.class),
+                mock(ProposalPdfService.class), runner);
+        fx(() -> {
+            customerCombo(controller).setItems(
+                    javafx.collections.FXCollections.observableArrayList(
+                            CUSTOMER, SECOND_CUSTOMER));
+            customerCombo(controller).getSelectionModel().select(CUSTOMER);
+            return null;
+        });
+        fx(() -> {
+            runner.completeLast(List.of(ENVIRONMENT));
+            return null;
+        });
+        assertEquals(List.of(ENVIRONMENT), environmentCombo(controller).getItems());
+
+        fx(() -> {
+            customerCombo(controller).getSelectionModel().select(SECOND_CUSTOMER);
+            return null;
+        });
+
+        assertTrue(environmentCombo(controller).getItems().isEmpty());
+        assertNull(environmentCombo(controller).getValue());
+    }
+
+    @Test
+    void keepsEnvironmentsEmptyWhenCurrentCustomerRequestFails() throws Exception {
+        DeferredUiTaskRunner runner = new DeferredUiTaskRunner();
+        KanbanController controller = loadController(mock(CustomerService.class),
+                mock(RemoteEnvironmentService.class), mock(RemoteSalesPipelineService.class),
+                mock(ProposalPdfService.class), runner);
+        fx(() -> {
+            customerCombo(controller).setItems(
+                    javafx.collections.FXCollections.observableArrayList(
+                            CUSTOMER, SECOND_CUSTOMER));
+            customerCombo(controller).getSelectionModel().select(CUSTOMER);
+            return null;
+        });
+        fx(() -> {
+            runner.completeLast(List.of(ENVIRONMENT));
+            return null;
+        });
+        fx(() -> {
+            customerCombo(controller).getSelectionModel().select(SECOND_CUSTOMER);
+            runner.failLast("server unavailable");
+            return null;
+        });
+
+        assertTrue(environmentCombo(controller).getItems().isEmpty());
+        assertNull(environmentCombo(controller).getValue());
+    }
+
+    @Test
+    void ignoresOutOfOrderEnvironmentResponsesForPreviousCustomer() throws Exception {
+        DeferredUiTaskRunner runner = new DeferredUiTaskRunner();
+        KanbanController controller = loadController(mock(CustomerService.class),
+                mock(RemoteEnvironmentService.class), mock(RemoteSalesPipelineService.class),
+                mock(ProposalPdfService.class), runner);
+        fx(() -> {
+            customerCombo(controller).setItems(
+                    javafx.collections.FXCollections.observableArrayList(
+                            CUSTOMER, SECOND_CUSTOMER));
+            customerCombo(controller).getSelectionModel().select(CUSTOMER);
+            return null;
+        });
+        int firstRequest = runner.size() - 1;
+        fx(() -> {
+            customerCombo(controller).getSelectionModel().select(SECOND_CUSTOMER);
+            return null;
+        });
+        int secondRequest = runner.size() - 1;
+
+        fx(() -> {
+            runner.complete(secondRequest, List.of(SECOND_ENVIRONMENT));
+            return null;
+        });
+        fx(() -> {
+            runner.complete(firstRequest, List.of(ENVIRONMENT));
+            return null;
+        });
+
+        assertEquals(List.of(SECOND_ENVIRONMENT), environmentCombo(controller).getItems());
+    }
+
     private static KanbanController loadController(
             CustomerService customers,
             RemoteEnvironmentService environments,
             RemoteSalesPipelineService pipeline,
             ProposalPdfService pdf
     ) throws Exception {
+        return loadController(customers, environments, pipeline, pdf,
+                new SynchronousUiTaskRunner());
+    }
+
+    private static KanbanController loadController(
+            CustomerService customers,
+            RemoteEnvironmentService environments,
+            RemoteSalesPipelineService pipeline,
+            ProposalPdfService pdf,
+            UiTaskRunner taskRunner
+    ) throws Exception {
         KanbanController controller = new KanbanController(
-                customers, environments, pipeline, pdf, new SynchronousUiTaskRunner());
+                customers, environments, pipeline, pdf, taskRunner);
         FXMLLoader loader = new FXMLLoader(
                 KanbanControllerHttpTest.class.getResource(
                         "/com/woodlogix/desktop/ui/kanban/kanban-view.fxml"),
@@ -211,6 +316,40 @@ class KanbanControllerHttpTest {
             } catch (Exception exception) {
                 onFailure.accept(exception.getMessage());
             }
+        }
+    }
+
+    private static final class DeferredUiTaskRunner extends UiTaskRunner {
+        private final List<Pending> pending = new ArrayList<>();
+
+        @Override
+        @SuppressWarnings("unchecked")
+        public <T> void execute(
+                Callable<T> operation,
+                ResourceBundle messages,
+                Consumer<T> onSuccess,
+                Consumer<String> onFailure
+        ) {
+            pending.add(new Pending((Consumer<Object>) onSuccess, onFailure));
+        }
+
+        int size() {
+            return pending.size();
+        }
+
+        void complete(int index, Object value) {
+            pending.get(index).success.accept(value);
+        }
+
+        void completeLast(Object value) {
+            complete(pending.size() - 1, value);
+        }
+
+        void failLast(String message) {
+            pending.get(pending.size() - 1).failure.accept(message);
+        }
+
+        private record Pending(Consumer<Object> success, Consumer<String> failure) {
         }
     }
 }

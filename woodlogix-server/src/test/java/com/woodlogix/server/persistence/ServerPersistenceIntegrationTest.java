@@ -17,14 +17,49 @@ import com.woodlogix.application.hardware.HardwareInput;
 import com.woodlogix.application.material.MaterialCatalog;
 import com.woodlogix.application.material.MaterialCatalogPort;
 import com.woodlogix.application.material.MaterialInput;
+import com.woodlogix.application.proposal.CreateProposalInput;
+import com.woodlogix.application.proposal.ProposalManagement;
+import com.woodlogix.application.proposal.ProposalPersistencePort;
 import com.woodlogix.application.sales.SalesPipeline;
 import com.woodlogix.application.sales.SalesProjectInput;
 import com.woodlogix.application.transaction.TransactionPort;
 import com.woodlogix.application.workpiece.ProjectWorkpiece;
 import com.woodlogix.application.workpiece.ProjectWorkpieceInput;
 import com.woodlogix.core.enums.MaterialType;
+import com.woodlogix.core.enums.CurrencyCode;
 import com.woodlogix.core.enums.SalesStage;
 import com.woodlogix.core.enums.VisibleEdge;
+import com.woodlogix.core.model.CommercialTermsDraft;
+import com.woodlogix.core.model.CatalogReference;
+import com.woodlogix.core.model.CatalogType;
+import com.woodlogix.core.model.ContactSnapshot;
+import com.woodlogix.core.model.CustomerSnapshot;
+import com.woodlogix.core.model.FixedDiscountInput;
+import com.woodlogix.core.model.InstallationTerms;
+import com.woodlogix.core.model.InternalCostBreakdown;
+import com.woodlogix.core.model.LeadTime;
+import com.woodlogix.core.model.ManualConversion;
+import com.woodlogix.core.model.Money;
+import com.woodlogix.core.model.PaymentTerms;
+import com.woodlogix.core.model.PercentageDiscountInput;
+import com.woodlogix.core.model.ProposalCalculationResult;
+import com.woodlogix.core.model.Proposal;
+import com.woodlogix.core.model.ProposalDraft;
+import com.woodlogix.core.model.ProposalDraftId;
+import com.woodlogix.core.model.ProposalDraftStatus;
+import com.woodlogix.core.model.ProposalId;
+import com.woodlogix.core.model.ProposalDraftItem;
+import com.woodlogix.core.model.ProposalLineId;
+import com.woodlogix.core.model.ProposalTotalsSnapshot;
+import com.woodlogix.core.model.ProposalVersionNumber;
+import com.woodlogix.core.model.RecipientSnapshot;
+import com.woodlogix.core.model.SalesProjectId;
+import com.woodlogix.core.model.TaxInput;
+import com.woodlogix.core.model.TaxMode;
+import com.woodlogix.core.model.TaxSnapshot;
+import com.woodlogix.core.model.TransportTerms;
+import com.woodlogix.core.model.UnitOfMeasure;
+import com.woodlogix.core.model.ValidityPeriod;
 import com.woodlogix.server.WoodLogixServerApplication;
 import com.woodlogix.server.event.CustomerChangedEvent;
 import com.woodlogix.server.event.EnvironmentChangedEvent;
@@ -53,6 +88,8 @@ import org.springframework.transaction.support.TransactionTemplate;
 
 import javax.sql.DataSource;
 import java.math.BigDecimal;
+import java.time.Clock;
+import java.time.LocalDate;
 import java.nio.file.Path;
 import java.sql.Connection;
 import java.sql.ResultSet;
@@ -334,6 +371,234 @@ class ServerPersistenceIntegrationTest {
                 Boolean.class)));
     }
 
+    @Test
+    void persistsAndRehydratesAnEmptyProposalDraft() {
+        CustomerRow customer = bean(CustomerCatalog.class).create(customerInput("Proposal customer"));
+        var project = bean(SalesPipeline.class).create(new SalesProjectInput(
+                customer.id(), null, "Proposal project", money("100")));
+
+        var created = bean(ProposalManagement.class).create(new CreateProposalInput(
+                new SalesProjectId(project.id()),
+                null,
+                CurrencyCode.USD,
+                null,
+                List.of(),
+                null,
+                ValidityPeriod.of(30),
+                new CommercialTermsDraft(
+                        new PaymentTerms("Net 30"), null, null, null, null)));
+
+        var loaded = bean(ProposalManagement.class)
+                .findById(created.proposal().getProposalId());
+        assertEquals(created.proposal().getProposalId(),
+                loaded.proposal().getProposalId());
+        assertEquals(1, loaded.proposal().getDraftHistory().size());
+        assertTrue(loaded.proposal().getCurrentDraft().getItems().isEmpty());
+        assertEquals(1, jdbc.queryForObject(
+                "SELECT COUNT(*) FROM proposal_drafts", Integer.class));
+    }
+
+    @Test
+    void roundTripsCommercialDraftFieldsAndItemOrder() {
+        CustomerRow customer = bean(CustomerCatalog.class).create(customerInput("Complete customer"));
+        var project = bean(SalesPipeline.class).create(new SalesProjectInput(
+                customer.id(), null, "Complete project", money("100")));
+        ProposalDraftItem item = new ProposalDraftItem(
+                new ProposalLineId("line-1"),
+                "Door",
+                new BigDecimal("1.250"),
+                new UnitOfMeasure("m2"),
+                moneyUsd("10.00"),
+                new FixedDiscountInput(moneyUsd("1.00")),
+                new TaxInput(TaxMode.EXCLUDED, new BigDecimal("22.00")),
+                new CatalogReference(CatalogType.MATERIAL, "material-1"),
+                new InternalCostBreakdown(
+                        moneyUsd("1"), moneyUsd("2"), moneyUsd("3"),
+                        moneyUsd("4"), moneyUsd("5"), moneyUsd("6")));
+
+        var created = bean(ProposalManagement.class).create(new CreateProposalInput(
+                new SalesProjectId(project.id()),
+                new RecipientSnapshot(
+                        "Recipient", new ContactSnapshot("Contact", "+598123456", "r@example.com")),
+                CurrencyCode.USD,
+                new ManualConversion(new BigDecimal("40.125")),
+                List.of(item),
+                new PercentageDiscountInput(new BigDecimal("5.50")),
+                ValidityPeriod.of(45),
+                new CommercialTermsDraft(
+                        new PaymentTerms("Net 30"),
+                        new LeadTime("10 days"),
+                        new TransportTerms("FOB"),
+                        new InstallationTerms("Included"),
+                        "Notes")));
+
+        var loaded = bean(ProposalManagement.class)
+                .findById(created.proposal().getProposalId()).proposal().getCurrentDraft();
+        assertEquals(new BigDecimal("40.125"), loaded.getConversion().getUyuPerUsd());
+        assertEquals(new BigDecimal("5.50"),
+                ((PercentageDiscountInput) loaded.getGeneralDiscount()).getPercentage());
+        assertEquals(1, loaded.getItems().size());
+        assertEquals("line-1", loaded.getItems().get(0).getLineId().getValue());
+        assertEquals(new BigDecimal("1.250"), loaded.getItems().get(0).getQuantity());
+        assertEquals(new BigDecimal("22.00"), loaded.getItems().get(0).getTax().getRate());
+        assertEquals("material-1",
+                loaded.getItems().get(0).getCatalogReference().getCatalogId());
+        assertEquals(new BigDecimal("6"),
+                loaded.getItems().get(0).getDirectCosts().getExtras().getAmount());
+    }
+
+    @Test
+    void sequenceReservationRollsBackWithTheApplicationTransaction() {
+        ProposalPersistencePort persistence = bean(ProposalPersistencePort.class);
+        TransactionPort transactions = bean(TransactionPort.class);
+
+        assertThrows(IllegalStateException.class, () -> transactions.executeWithResult(() -> {
+            persistence.reserveNextId(2099);
+            throw new IllegalStateException("force rollback");
+        }));
+
+        assertEquals("PROP-2099-0001",
+                transactions.executeWithResult(() -> persistence.reserveNextId(2099))
+                        .getValue());
+        assertEquals(2, jdbc.queryForObject(
+                "SELECT next_sequence FROM proposal_id_sequences "
+                        + "WHERE proposal_year = 2099", Integer.class));
+    }
+
+    @Test
+    void rejectsSavingProposalWithUnsupportedVersions() {
+        CustomerRow customer = bean(CustomerCatalog.class).create(customerInput("Version customer"));
+        var project = bean(SalesPipeline.class).create(new SalesProjectInput(
+                        customer.id(), null, "Version project", money("100")));
+        ProposalDraftItem item = new ProposalDraftItem(
+                        new ProposalLineId("version-line"),
+                        "Version item",
+                        money("1"),
+                        new UnitOfMeasure("unit"),
+                        moneyUsd("0"),
+                        null,
+                        new TaxInput(TaxMode.EXCLUDED, money("0")),
+                        null,
+                        null);
+        var created = bean(ProposalManagement.class).create(new CreateProposalInput(
+                        new SalesProjectId(project.id()),
+                        null,
+                        CurrencyCode.USD,
+                        null,
+                        List.of(item),
+                        null,
+                        ValidityPeriod.of(30),
+                        new CommercialTermsDraft(
+                                new PaymentTerms("Immediate"), null, null, null, null)));
+        Money zero = moneyUsd("0");
+        ProposalTotalsSnapshot totals = new ProposalTotalsSnapshot(
+                        zero, zero, zero, zero, zero, zero);
+        created.proposal().emit(
+                        created.proposal().getCurrentDraftId(),
+                        created.proposal().getCurrentDraftRevision(),
+                        new ProposalVersionNumber("V01"),
+                        new ProposalCalculationResult(
+                                created.proposal().getProposalId(),
+                                created.proposal().getCurrentDraftId(),
+                                created.proposal().getCurrentDraftRevision(),
+                                List.of(new com.woodlogix.core.model.ProposalCalculationLineResult(
+                                        item.getLineId(),
+                                        zero,
+                                        null,
+                                        zero,
+                                        zero,
+                                        new TaxSnapshot(TaxMode.EXCLUDED, money("0"), zero, zero),
+                                        zero)),
+                                null, totals, null),
+                        LocalDate.of(2026, 1, 1),
+                        LocalDate.of(2026, 1, 31));
+
+        assertThrows(IllegalStateException.class, () ->
+                        bean(ProposalPersistencePort.class).saveNew(created.proposal()));
+    }
+
+    @Test
+    void missingSalesProjectRollsBackTheReservedProposalId() {
+        int year = LocalDate.now(Clock.systemUTC()).getYear();
+        assertThrows(RuntimeException.class, () -> bean(ProposalManagement.class).create(
+                        new CreateProposalInput(
+                                new SalesProjectId("missing-sales-project"),
+                                null,
+                                CurrencyCode.USD,
+                                null,
+                                List.of(),
+                                null,
+                                ValidityPeriod.of(15),
+                                new CommercialTermsDraft(
+                                        new PaymentTerms("Immediate"), null, null, null, null))));
+
+        assertEquals(0, jdbc.queryForObject(
+                        "SELECT COUNT(*) FROM proposal_id_sequences WHERE proposal_year = ?",
+                        Integer.class, year));
+    }
+
+    @Test
+    void saveNewConstraintFailureRollsBackProposalAndReservedId() {
+        int year = LocalDate.now(Clock.systemUTC()).getYear();
+        CustomerRow customer = bean(CustomerCatalog.class).create(customerInput("Rollback customer"));
+        var project = bean(SalesPipeline.class).create(new SalesProjectInput(
+                        customer.id(), null, "Rollback project", money("100")));
+        var existing = bean(ProposalManagement.class).create(new CreateProposalInput(
+                        new SalesProjectId(project.id()),
+                        null,
+                        CurrencyCode.USD,
+                        null,
+                        List.of(),
+                        null,
+                        ValidityPeriod.of(30),
+                        new CommercialTermsDraft(
+                                new PaymentTerms("Immediate"), null, null, null, null)));
+        ProposalId failedProposalId = new ProposalId("PROP-%04d-9999".formatted(year));
+        ProposalDraft failedDraft = new ProposalDraft(
+                        new ProposalDraftId("failed-draft"),
+                        failedProposalId,
+                        new SalesProjectId("missing-sales-project"),
+                        null,
+                        ProposalDraftStatus.EDITABLE,
+                        new CustomerSnapshot("customer", "Customer"),
+                        null,
+                        CurrencyCode.USD,
+                        null,
+                        List.of(),
+                        null,
+                        ValidityPeriod.of(30),
+                        new CommercialTermsDraft(
+                                new PaymentTerms("Immediate"), null, null, null, null));
+        Proposal invalidProposal = new Proposal(
+                        failedProposalId,
+                        new SalesProjectId("missing-sales-project"),
+                        failedDraft);
+
+        assertThrows(RuntimeException.class, () ->
+                        bean(TransactionPort.class).executeWithResult(() -> {
+                            bean(ProposalPersistencePort.class).reserveNextId(year);
+                            bean(ProposalPersistencePort.class).saveNew(invalidProposal);
+                            return null;
+                        }));
+
+        assertEquals(1, jdbc.queryForObject(
+                        "SELECT COUNT(*) FROM proposals", Integer.class));
+        assertEquals("PROP-%04d-0002".formatted(year),
+                        bean(TransactionPort.class).executeWithResult(
+                                () -> bean(ProposalPersistencePort.class).reserveNextId(year))
+                                .getValue());
+    }
+
+    @Test
+    void reportsSequenceExhaustionInsteadOfLeakingNoResultException() {
+        jdbc.update("INSERT INTO proposal_id_sequences(proposal_year, next_sequence) "
+                                + "VALUES (?, ?)", 2098, 10000);
+
+        assertThrows(IllegalStateException.class, () ->
+                        bean(TransactionPort.class).executeWithResult(
+                                () -> bean(ProposalPersistencePort.class).reserveNextId(2098)));
+    }
+
     private <T> T bean(Class<T> type) {
         return context.getBean(type);
     }
@@ -368,6 +633,10 @@ class ServerPersistenceIntegrationTest {
 
     private static BigDecimal money(String value) {
         return new BigDecimal(value);
+    }
+
+    private static Money moneyUsd(String value) {
+        return new Money(money(value), CurrencyCode.USD);
     }
 
     @TestConfiguration(proxyBeanMethods = false)

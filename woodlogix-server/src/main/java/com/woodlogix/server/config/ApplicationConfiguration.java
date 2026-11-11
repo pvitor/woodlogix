@@ -21,8 +21,13 @@ import com.woodlogix.application.sales.SalesPipelinePort;
 import com.woodlogix.application.transaction.TransactionPort;
 import com.woodlogix.application.workpiece.ProjectWorkpiece;
 import com.woodlogix.application.workpiece.ProjectWorkpiecePort;
+import com.woodlogix.application.proposal.ProposalManagement;
+import com.woodlogix.application.proposal.ProposalPersistencePort;
+import com.woodlogix.application.proposal.ProposalProjectPort;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+
+import java.time.Clock;
 
 @Configuration
 public class ApplicationConfiguration {
@@ -98,5 +103,20 @@ public class ApplicationConfiguration {
             TransactionPort transactions
     ) {
         return new EstimateDraft(drafts, transactions);
+    }
+
+    @Bean
+    public Clock proposalClock() {
+        return Clock.systemUTC();
+    }
+
+    @Bean
+    public ProposalManagement proposalManagement(
+            ProposalPersistencePort proposals,
+            ProposalProjectPort projects,
+            TransactionPort transactions,
+            Clock proposalClock
+    ) {
+        return new ProposalManagement(proposals, projects, transactions, proposalClock);
     }
 }

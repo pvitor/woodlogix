@@ -32,10 +32,14 @@ A estrutura conceitual aprovada é:
 `SalesProject → Proposal → ProposalVersion`
 
 - **SalesProject:** projeto comercial já representado atualmente por `SalesProjectEntity`. Agrupa o relacionamento com cliente/ambiente e o andamento no funil.
-- **Proposal:** oferta ou alternativa comercial independente dentro de um projeto. Um mesmo projeto pode ter várias propostas, por exemplo, alternativas distintas de materiais ou escopo.
+- **Proposal:** oferta ou alternativa comercial independente dentro de um projeto. Um mesmo projeto pode ter múltiplas propostas independentes, por exemplo, alternativas distintas de materiais ou escopo.
 - **ProposalVersion:** registro de uma emissão específica de uma proposta. Cada proposta mantém seu próprio histórico de versões; uma nova emissão cria nova versão, sem sobrescrever a anterior.
 
-Propostas diferentes do mesmo projeto podem ter moedas diferentes. A moeda principal de cada proposta é única e deverá estar preservada em suas versões emitidas. A possibilidade de mudar a moeda entre versões da mesma proposta permanece pendente.
+As propostas devem usar identificadores comerciais no formato `PROP-AAAA-NNNN`, sem reutilização. As versões devem usar a numeração `V01`, com numeração crescente e sem reutilização dentro da proposta.
+
+Propostas diferentes do mesmo projeto podem ter moedas diferentes. A moeda principal de cada proposta é única e deverá estar preservada em suas versões emitidas. A possibilidade de mudar a moeda entre versões da mesma proposta ainda é uma decisão pendente.
+
+Cada `Proposal` possui um único rascunho editável corrente. O rascunho não é uma versão emitida e não substitui o histórico imutável de `ProposalVersion`.
 
 O conceito de `Proposal` é necessário porque o projeto pode agrupar mais de uma oferta independente. O conceito de `ProposalVersion` é necessário porque revisões emitidas precisam ser identificáveis e preservadas. Essa separação não determina uma hierarquia extensa de classes ou entidades: o modelo deve continuar limitado às responsabilidades de projeto, proposta e versão.
 
@@ -46,11 +50,11 @@ O orçamento de trabalho permanece editável e é distinto de qualquer proposta 
 1. A marcenaria edita o orçamento de trabalho e consulta os cadastros e regras disponíveis.
 2. A emissão cria uma nova `ProposalVersion` definitiva, com o snapshot dos dados e valores usados.
 3. Emitir uma versão não destrói, não congela e não converte o orçamento de trabalho em proposta.
-4. Uma revisão pode começar copiando a última versão emitida para um novo orçamento de trabalho editável. Essa cópia pode consultar preços atuais dos cadastros.
+4. Uma revisão começa copiando a última versão emitida para um novo orçamento de trabalho editável. Os preços e valores copiados são preservados no novo rascunho. Consultar preços atuais dos catálogos não autoriza atualização automática do rascunho; qualquer atualização de preços exige ação explícita do usuário.
 5. Alterações feitas no orçamento de trabalho copiado nunca modificam a versão emitida de origem.
 6. Emitir a revisão cria outra versão da mesma proposta, mantendo a anterior preservada e identificável.
 
-O vínculo do orçamento de trabalho com projetos e propostas ainda precisa ser definido. O comportamento atual, com um único rascunho identificado como `"active"` e vínculo opcional a um projeto, não resolve por si só múltiplos projetos, propostas ou revisões editáveis.
+O rascunho editável pertence a uma `Proposal`, e cada proposta possui um único rascunho corrente. O comportamento atual, com um único rascunho identificado como `"active"` e vínculo opcional a um projeto, não representa esse modelo e será substituído.
 
 ## 5. Emissão e snapshot imutável
 
@@ -59,7 +63,8 @@ Na emissão, a versão deve preservar informação suficiente para reproduzir fi
 O snapshot da versão emitida deverá incluir, conforme aplicável:
 
 - Identificação do projeto, da proposta e da versão.
-- Dados do cliente e do destinatário utilizados na oferta.
+- Número comercial da proposta e número da versão.
+- Dados do cliente e do destinatário utilizados na oferta. Quando houver um contato comercial associado ao destinatário, preservar `displayName` obrigatório e `phone` e `email` opcionais, sem exigir ambos nem incluir endereço ou documentos pessoais.
 - Descrições dos produtos, materiais, ferragens e serviços.
 - Quantidades e unidades.
 - Preços unitários, valores totais e moeda da proposta.
@@ -72,23 +77,27 @@ O snapshot da versão emitida deverá incluir, conforme aplicável:
 
 Depois de emitido, o conteúdo comercial e financeiro do snapshot não pode ser editado nem recalculado a partir dos cadastros atuais. Mudanças em nomes, preços, unidades, dados de cliente, fórmulas ou configurações futuras não podem modificar retroativamente uma versão emitida. As transições de estado e a referência de substituição são informações de histórico da versão, separadas do conteúdo comercial congelado.
 
-A emissão deverá obter de forma coerente os dados usados para compor o snapshot, evitando misturar preços ou descrições de momentos diferentes durante uma mesma operação. A estratégia técnica de transação e validação será definida na implementação.
+A emissão deve obter de forma coerente os dados usados para compor o snapshot, evitando misturar preços ou descrições de momentos diferentes durante uma mesma operação. A persistência da versão imutável, do estado `ISSUED` e de `currentIssuedVersionId` deve ocorrer atomicamente na mesma operação.
+
+Cada `Proposal` mantém `currentIssuedVersionId`, que identifica sua versão emitida atual, quando existir. Versões anteriores preservam seu estado histórico e recebem `replacedByVersionId` quando forem substituídas por uma nova emissão. Não existe o estado `SUPERSEDED`.
 
 ## 6. Regras monetárias, tributárias e comerciais
 
 ### 6.1 Moedas e precisão monetária
 
-- Na primeira versão, as moedas suportadas serão **UYU** e **USD**.
+- As moedas suportadas serão **UYU** e **USD**.
 - Cada proposta terá uma única moeda principal; propostas independentes do mesmo projeto podem usar moedas distintas.
 - A moeda utilizada deverá ser preservada no snapshot. A apresentação do PDF não poderá inferir a moeda somente a partir do idioma ou localidade da aplicação.
 - Cálculos e persistência monetária deverão utilizar `BigDecimal`.
 - A precisão decimal interna deverá ser mantida sem arredondamento prematuro.
 - Valores apresentados ao usuário e no documento comercial terão duas casas decimais.
-- O modo de arredondamento e as etapas exatas em que será aplicado continuam pendentes de decisão; esta diretriz não escolhe um modo ou uma regra de arredondamento.
+- Quando necessário, a conversão será manual, com taxa positiva expressa em UYU por 1 USD.
+- Cada rascunho possui no máximo uma taxa de conversão aplicável, que deve ser preservada no snapshot da versão emitida.
+- Ajuste residual exclusivamente visual será aplicado somente na apresentação final, no último item elegível, após os valores internos serem mantidos sem arredondamento prematuro. Esse ajuste não altera valores internos, cálculos, dados persistidos ou o snapshot imutável.
 
 ### 6.2 IVA e base tributável
 
-O sistema deverá permitir registrar preços informados com IVA incluído ou sem IVA e configurar a alíquota aplicável. O snapshot deverá registrar o modo tributário, a alíquota e os valores calculados de cada item ou componente sujeito ao tratamento aplicável.
+O IVA é definido por item. O sistema deverá permitir registrar preços informados com IVA incluído ou sem IVA e a alíquota aplicável. O snapshot deverá registrar o modo tributário, a alíquota e os valores calculados de cada item ou componente sujeito ao tratamento aplicável.
 
 Na apresentação da proposta, separar:
 
@@ -97,20 +106,20 @@ Na apresentação da proposta, separar:
 - Valor do IVA.
 - Total final.
 
-Não presumir que todos os produtos e serviços possuem o mesmo tratamento fiscal. As regras fiscais aplicáveis por categoria, item ou componente precisam ser definidas antes de automatizar os cálculos. O snapshot deve preservar os dados e resultados usados na emissão, mesmo se as regras fiscais mudarem posteriormente.
+Não presumir que todos os produtos e serviços possuem o mesmo tratamento fiscal. O snapshot deve preservar os dados e resultados usados na emissão, mesmo se as regras fiscais mudarem posteriormente.
 
 ### 6.3 Descontos
 
-Deverão ser suportados descontos individuais por item e desconto geral da proposta. Cada desconto poderá ser percentual ou por valor fixo. Os descontos devem ser discriminados e aplicados antes do cálculo do IVA, respeitando a base tributável aplicável.
+Deverão ser suportados descontos individuais por item e desconto geral da proposta. Cada desconto poderá ser percentual ou por valor fixo. Os descontos individuais são aplicados primeiro. O desconto geral é distribuído proporcionalmente às bases após os descontos individuais e antes do cálculo do IVA.
 
-O sistema deverá impedir que um desconto exceda o valor correspondente ou produza valor negativo. A ordem detalhada dos descontos, a base de incidência de cada tipo, a interação entre descontos por item e desconto geral e o tratamento quando houver bases tributáveis diferentes permanecem pendentes. Não se deve aplicar uma fórmula presumida para preencher essas lacunas.
+O sistema deverá impedir que um desconto exceda o valor correspondente ou produza valor negativo. O snapshot deve preservar os descontos aplicados e os valores resultantes.
 
 ### 6.4 Validade e condições comerciais
 
 Cada versão emitida deverá preservar:
 
 - Data de emissão.
-- Prazo de validade configurável.
+- Prazo de validade configurável de 15, 30 ou 45 dias.
 - Data de vencimento calculada no momento da emissão.
 - Condições de pagamento.
 - Prazo estimado de fabricação.
@@ -118,7 +127,11 @@ Cada versão emitida deverá preservar:
 - Instalação, quando aplicável.
 - Observações comerciais.
 
-Depois da emissão, o vencimento registrado não deverá mudar em função de configurações futuras. Uma versão vencida poderá passar a `EXPIRED` se ainda não tiver sido aceita, rejeitada ou retirada. A regra operacional para detectar ou persistir essa transição ainda deve ser definida.
+Depois da emissão, o vencimento registrado não deverá mudar em função de configurações futuras. Uma versão vencida passa a `EXPIRED` se ainda não tiver sido aceita, rejeitada ou retirada.
+
+A validade é calculada com vencimento congelado. A versão permanece válida até o final do último dia do prazo e expira no dia seguinte. A verificação ocorre na inicialização da aplicação, na abertura da proposta e antes de operações relevantes. Não há scheduler para essa verificação.
+
+Os custos internos devem permanecer separados dos itens comerciais apresentados ao cliente. O modelo deve suportar margem por item e margem padrão global. Margens abaixo dos limites definidos exigem aprovação independente e justificativa obrigatória, preservadas para auditoria.
 
 ## 7. Estados e histórico das versões
 
@@ -136,17 +149,17 @@ Os seguintes estados pertencem a `ProposalVersion`:
 
 Estado comercial e versão são dimensões distintas. Uma proposta possui versões identificáveis; cada versão tem seu próprio estado e histórico. A substituição de uma versão não cria estado adicional nem apaga ou sobrescreve a versão anterior.
 
-Quando uma nova versão for emitida, a versão anterior deverá permanecer preservada e conter uma referência à versão que a substituiu. Essa relação de substituição é registrada separadamente do estado. Assim, substituição não implica automaticamente `REJECTED`, `EXPIRED` ou outro estado: o estado da versão anterior continua sujeito às regras do seu ciclo comercial.
+Quando uma nova versão for emitida, a versão anterior deverá permanecer preservada e receber `replacedByVersionId`. Essa relação de substituição é registrada separadamente do estado. Assim, substituição não implica automaticamente `REJECTED`, `EXPIRED` ou outro estado: o estado da versão anterior continua sujeito às regras do seu ciclo comercial.
 
-As regras de transição entre estados, o tratamento de aceite parcial ou posterior a uma substituição e a possibilidade de ações reversíveis ainda precisam de definição de negócio.
+Somente a versão emitida atual, identificada por `currentIssuedVersionId`, pode ser aceita. `REJECTED`, `EXPIRED` e `WITHDRAWN` são estados terminais. A aceitação não cria uma `Sale` automaticamente.
 
 ## 8. Relação com o PDF
 
 O PDF de uma proposta emitida deverá ser gerado a partir do snapshot da `ProposalVersion` correspondente. Não deverá consultar preços atuais de materiais, ferragens ou serviços, nem usar os dados correntes do projeto para reconstruir valores históricos.
 
-O documento deverá refletir os dados congelados da versão, incluindo identificação e número da versão, destinatário, moeda, itens, condições, tratamento tributário, descontos, data de emissão, vencimento e totais aplicáveis. A formatação poderá ser localizada, mas a localização não poderá alterar valores, alíquotas ou moeda registrada.
+O documento deverá refletir os dados congelados da versão, incluindo identificação e número da versão, destinatário e, quando presente, os dados congelados do contato comercial, moeda, itens, condições, tratamento tributário, descontos, data de emissão, vencimento e totais aplicáveis. A formatação poderá ser localizada, mas a localização não poderá alterar valores, alíquotas ou moeda registrada.
 
-O `ProposalPdfService` atual é uma base de infraestrutura de geração, mas sua exportação por ID de projeto e leitura do valor atual do projeto não satisfazem o requisito de reprodução histórica. A política para arquivar o arquivo PDF efetivamente enviado, além de poder gerá-lo novamente a partir do snapshot, permanece pendente.
+O `ProposalPdfService` atual é uma base de infraestrutura de geração, mas sua exportação por ID de projeto e leitura do valor atual do projeto não satisfazem o requisito de reprodução histórica. A exportação de uma versão emitida deve receber e usar seu snapshot. O PDF da versão emitida, baseado no snapshot, deve ser preservado localmente, fora do SQLite. A estrutura de diretórios, a nomenclatura dos arquivos e a política específica de backup permanecem pendentes.
 
 ## 9. Princípios arquiteturais
 
@@ -161,27 +174,35 @@ O `ProposalPdfService` atual é uma base de infraestrutura de geração, mas sua
 
 ## 10. Decisões pendentes
 
-As seguintes decisões não estão definidas por este documento e não devem ser presumidas durante a implementação:
+As decisões abaixo continuam pendentes e não devem ser presumidas durante a implementação. Elas são separadas pelo marco que bloqueiam.
 
-1. **Arredondamento:** modo de arredondamento de `BigDecimal` e etapas de arredondamento de itens, descontos, bases tributáveis, IVA e totais.
-2. **Moeda entre versões:** se uma versão nova da mesma proposta pode usar moeda diferente da versão anterior ou se a mudança exige uma proposta independente.
-3. **Descontos:** base, ordem e composição detalhadas para descontos por item e gerais, especialmente na presença de itens com tratamento tributário diferente.
-4. **Regras fiscais:** tratamentos e alíquotas por categoria de produto ou serviço, inclusive as exceções aplicáveis.
-5. **PDF enviado:** se o PDF efetivamente enviado deve ser armazenado como artefato, além de poder ser reconstruído a partir do snapshot; se armazenado, definir localização e política de retenção.
-6. **Orçamento de trabalho:** como associá-lo a projetos e propostas, quantos rascunhos podem existir e como iniciar e identificar uma revisão.
-7. **Registros antigos:** regras para tratar projetos, valores e rascunhos existentes. Não há dados suficientes para criar versões históricas completas automaticamente.
-8. **Validade:** unidade e limites do prazo configurável e mecanismo para detectar ou persistir o estado `EXPIRED`.
-9. **Estados e aceite:** transições permitidas, evidência de aceite/recusa, aprovação interna se necessária e tratamento de versões substituídas.
-10. **Numeração:** formato de identificação de propostas e versões e escopo de unicidade.
-11. **Condições comerciais:** estrutura dos campos e quais condições são obrigatórias ou opcionais.
+### 10.1 Bloqueiam o cálculo comercial
+
+1. **Regras fiscais detalhadas:** tratamentos e alíquotas por categoria de produto ou serviço, inclusive exceções ainda não especificadas.
+2. **Condições comerciais:** estrutura dos campos e quais condições são obrigatórias ou opcionais.
+3. **Limites de margem:** valores dos limites, autoridade da aprovação independente e estrutura da justificativa.
+4. **Moeda entre versões:** se uma nova versão da mesma proposta pode usar moeda diferente ou se a mudança exige uma nova proposta independente.
+
+### 10.2 Bloqueiam a emissão e o histórico
+
+5. **Transação de emissão:** limites da operação atômica, concorrência e comportamento em falhas parciais.
+6. **Revisão:** identificação do novo rascunho e detalhes operacionais da cópia da última versão emitida. Os preços e valores copiados são preservados, e qualquer atualização exige ação explícita do usuário.
+7. **Estados e aceite — detalhes pendentes:** evidências de aceite/recusa, transições não descritas, tratamento de ações reversíveis e aspectos operacionais dos estados e versões substituídas. Já está aprovado que somente a versão emitida atual pode ser aceita e que `REJECTED`, `EXPIRED` e `WITHDRAWN` são estados terminais.
+8. **Registros antigos:** regras para tratar projetos, valores e rascunhos existentes. Não há dados suficientes para criar versões históricas completas automaticamente.
+
+### 10.3 Podem ser decididas em etapas posteriores
+
+9. **PDF preservado:** estrutura de diretórios, nomenclatura dos arquivos e política específica de backup para o PDF local baseado no snapshot.
+10. **Exclusão e arquivamento:** política para excluir ou arquivar propostas não emitidas, rascunhos e itens editáveis. Versões emitidas permanecem imutáveis.
+11. **Validade operacional adicional:** tratamento administrativo após a verificação de expiração já definida e eventuais rotinas de consulta ou manutenção.
 
 ## 11. Etapas futuras recomendadas
 
-1. Definir as regras pendentes de moeda, arredondamento, tributação, descontos, validade, estados, numeração e associação do orçamento de trabalho.
-2. Detalhar o conteúdo mínimo e a política de imutabilidade do snapshot, distinguindo valores reproduzíveis de referências de rastreabilidade.
-3. Projetar a evolução conceitual de forma aditiva: projeto comercial, propostas independentes, versões emitidas e orçamento de trabalho separado.
+1. Definir as regras ainda pendentes de tributação, condições comerciais, limites de margem e moeda entre versões.
+2. Detalhar a transação de emissão, concorrência e comportamento em falhas parciais.
+3. Projetar a evolução conceitual de forma aditiva: projeto comercial, propostas independentes, versões emitidas e um rascunho editável por proposta.
 4. Planejar persistência e compatibilidade com os bancos SQLite existentes, incluindo cenários para projetos, rascunhos e cadastros legados.
-5. Definir e testar a criação consistente de uma versão a partir do orçamento, com valores e dados copiados dos cadastros na emissão.
+5. Definir e testar a criação consistente de uma versão a partir do rascunho, com valores e dados copiados dos cadastros na emissão.
 6. Adaptar a geração de PDF para receber uma versão específica e usar exclusivamente seu snapshot.
 7. Validar o histórico, imutabilidade, transições, cálculo monetário, tributação, descontos e apresentação com testes automatizados antes de disponibilizar o fluxo.
 
